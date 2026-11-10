@@ -25,6 +25,7 @@
   --warn: #f0a330;
   --display: "Bricolage Grotesque", "Arial Black", system-ui, sans-serif;
   --body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --navroom: 56px;   /* vrije ruimte onder de menuknoppen voor de Netlify-balk */
   color-scheme: light;
 }
 * { box-sizing: border-box; }
@@ -38,7 +39,7 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid 
 [hidden] { display: none !important; }
 
 .wrap { max-width: 560px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
-main { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+main { padding-bottom: calc(96px + var(--navroom) + env(safe-area-inset-bottom)); }
 
 /* Bovenbalk */
 .topbar { background: var(--night); color: var(--paper); padding-top: max(14px, env(safe-area-inset-top)); padding-bottom: 16px; box-shadow: 0 4px 14px rgba(0,0,0,.18); }
@@ -170,7 +171,7 @@ tr.first td { color: var(--danger); font-weight: 700; }
 .meter .exp { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--ink); }
 
 /* Onderbalk */
-nav.tabbar { position: fixed; left: 0; right: 0; bottom: 0; background: var(--night); padding-bottom: env(safe-area-inset-bottom); z-index: 5; }
+nav.tabbar { position: fixed; left: 0; right: 0; bottom: 0; background: var(--night); padding-bottom: calc(env(safe-area-inset-bottom) + var(--navroom)); z-index: 5; }
 nav.tabbar .wrap { display: grid; grid-template-columns: 1fr 1fr; }
 nav.tabbar a { color: #b9a69a; text-decoration: none; display: grid; justify-items: center; gap: 2px; padding: 10px 0 12px; font-size: 14px; font-weight: 600; }
 nav.tabbar a svg { width: 26px; height: 26px; }
@@ -183,7 +184,7 @@ nav.tabbar a[aria-current="page"] { color: var(--paper); }
 .dialog p { margin: 0 0 6px; color: var(--muted); }
 .dialog .btn { width: 100%; }
 
-.toast { position: fixed; left: 50%; bottom: calc(86px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--night); color: var(--paper); padding: 10px 16px; border-radius: 10px; font-weight: 500; max-width: calc(100% - 32px); z-index: 11; }
+.toast { position: fixed; left: 50%; bottom: calc(86px + var(--navroom) + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--night); color: var(--paper); padding: 10px 16px; border-radius: 10px; font-weight: 500; max-width: calc(100% - 32px); z-index: 11; }
 .status { color: var(--muted); font-size: 13px; margin-top: 16px; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
