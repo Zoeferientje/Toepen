@@ -149,6 +149,7 @@ tr.first td { color: var(--danger); font-weight: 700; }
 .ptable td:nth-child(2) { text-align: right; font-weight: 400; }
 .ptable small { color: var(--muted); }
 .ptable td.hi { color: var(--danger); font-weight: 700; }
+.ptable td.warmth { color: #8a5a12; font-weight: 700; }
 .ptable td.good { color: #2f6b3f; font-weight: 700; }
 .pstats { display: grid; gap: 10px; }
 .pstat { background: var(--paper); border-radius: 12px; padding: 14px; display: grid; gap: 10px; }
@@ -349,6 +350,10 @@ function renderHome() {
   const worst = pick((s) => s.fL);
   const winner = pick((s) => s.fW);
   const smallest = pick((s) => s.small / s.played);
+  // Kleine-spelersfactor: jouw gemiddelde per potje gedeeld door het gemiddelde van iedereen.
+  const totSmall = stats.reduce((n, x) => n + x.small, 0), totPlayed = stats.reduce((n, x) => n + x.played, 0);
+  const avgSmall = totPlayed ? totSmall / totPlayed : 0;
+  for (const x of stats) x.fS = avgSmall ? (x.small / x.played) / avgSmall : 0;
   const last = games[0];
   const lastLosers = last ? last.game_players.filter((x) => x.lost).map((x) => nameOf(x.player_id)) : [];
   const card = (cls, label, s, value) => `<div class="cap ${cls}"><div class="sub">${label}</div>${
@@ -364,7 +369,7 @@ function renderHome() {
       ${games.length ? `<div class="trio">
         ${card("", "Pechvogel", worst, (s) => ({ ok: s.lost > 0, text: `${nl1(s.fL)}× zo vaak verloren als verwacht` }))}
         ${card("luck", "Grootste winnaar", winner, (s) => ({ ok: s.won > 0, text: `${nl1(s.fW)}× zo vaak gewonnen als verwacht` }))}
-        ${card("smallest", "Kleinste speler", smallest, (s) => ({ ok: s.small > 0, text: `${nl1(s.small / s.played)} kleine spelers per potje` }))}
+        ${card("smallest", "Kleinste speler", smallest, (s) => ({ ok: s.small > 0, text: `${nl1(s.fS)}× zo vaak niet mee als gemiddeld` }))}
       </div>` : `<div class="cap"><div class="big">Nog geen potjes</div><div class="sub">Start een spel via Toepen onderin.</div></div>`}
     </div>
 
@@ -376,7 +381,7 @@ function renderHome() {
     <div class="section panel">
       <h2>Per speler</h2>
       ${stats.length ? `<div class="tablewrap"><table class="ptable">
-        <thead><tr><th>Speler</th><th>Potjes</th><th>Verloren</th><th>Factor</th><th>Gewonnen</th><th>Factor</th><th>Kleine sp.</th><th>Per potje</th></tr></thead>
+        <thead><tr><th>Speler</th><th>Potjes</th><th>Verloren</th><th>Factor</th><th>Gewonnen</th><th>Factor</th><th>Kleine sp.</th><th>Per potje</th><th>Factor</th></tr></thead>
         <tbody>${stats.map((s) => `<tr>
           <td>${esc(nameOf(s.pid))}${isGuest(s.pid) ? ' <span class="gtag">gast</span>' : ""}</td>
           <td>${s.played}</td>
@@ -386,8 +391,9 @@ function renderHome() {
           <td class="${s.fW > 1 ? "good" : ""}">${nl1(s.fW)}</td>
           <td>${s.small}</td>
           <td>${nl1(s.small / s.played)}</td>
+          <td class="${s.fS > 1 ? "warmth" : ""}">${nl1(s.fS)}</td>
         </tr>`).join("")}</tbody></table></div>
-        <p class="hint">Factor 1,0 is precies gemiddeld. Met 3 spelers verlies je verwacht 1 op de 3 potjes, met 5 spelers 1 op de 5. Factor 2,0 is twee keer zo vaak als verwacht.</p>`
+        <p class="hint">Factor 1,0 is precies gemiddeld. Met 3 spelers verlies je verwacht 1 op de 3 potjes, met 5 spelers 1 op de 5. Factor 2,0 is twee keer zo vaak als verwacht. Bij kleine spelers vergelijkt de factor jouw gemiddelde per potje met dat van iedereen samen.</p>`
         : `<p class="empty">Nog geen afgeronde potjes in deze periode.</p>`}
     </div>
 
