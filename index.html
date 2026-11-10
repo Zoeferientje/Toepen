@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Toepen Streeplijst</title>
+<meta name="description" content="Wie heeft het vaakst verloren met toepen?">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: één kolom als een streeplijst op papier; stand bovenaan, invoer en logboek eronder. */
+:root {
+  --paper: #f6f4ee;
+  --sheet: #ffffff;
+  --ink: #1d2320;
+  --muted: #69716c;
+  --line: #e2e0d8;
+  --accent: #b3261e;      /* rood van harten: de verliezer */
+  --accent-soft: #f7e3e1;
+  --felt: #1f5a43;        /* groen van de kaarttafel: knoppen */
+  --felt-ink: #ffffff;
+  --display: "Bricolage Grotesque", "Arial Black", system-ui, sans-serif;
+  --body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #121614; --sheet: #1a201d; --ink: #ecefe9; --muted: #9aa49e; --line: #2c3430;
+    --accent: #ff7a6e; --accent-soft: #3a2220; --felt: #3f9c76; --felt-ink: #0d1411;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--paper); color: var(--ink); font: 15px/1.5 var(--body);
+  padding: max(20px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(40px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+}
+main { max-width: 620px; margin: 0 auto; display: grid; gap: 22px; }
+header h1 { font: 800 clamp(2rem, 8vw, 2.8rem)/1 var(--display); margin: 0; letter-spacing: -0.02em; }
+header p { margin: 6px 0 0; color: var(--muted); }
+.card { background: var(--sheet); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+h2 { font: 600 1.1rem/1.2 var(--display); margin: 0 0 12px; }
+
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.tabs button { border: 1px solid var(--line); background: transparent; color: var(--ink); border-radius: 999px; padding: 6px 14px; font: 500 14px var(--body); cursor: pointer; }
+.tabs button[aria-pressed="true"] { background: var(--ink); color: var(--sheet); border-color: var(--ink); }
+
+ol.board { list-style: none; margin: 0; padding: 0; display: grid; }
+ol.board li { display: grid; grid-template-columns: 2rem 1fr auto auto; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+ol.board li:first-child { border-top: 0; }
+.rank { font: 800 1.2rem var(--display); color: var(--muted); text-align: center; font-variant-numeric: tabular-nums; }
+li.top .rank { color: var(--accent); }
+.who { min-width: 0; }
+.name { font-weight: 600; overflow-wrap: anywhere; }
+.guest { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; margin-left: 6px; vertical-align: 2px; }
+.tally { display: block; color: var(--ink); margin-top: 2px; min-height: 18px; }
+.tally svg { vertical-align: middle; margin-right: 6px; }
+li.top .tally { color: var(--accent); }
+.count { font: 800 1.5rem var(--display); font-variant-numeric: tabular-nums; min-width: 2ch; text-align: right; }
+li.top .count { color: var(--accent); }
+.plus { border: 0; border-radius: 10px; background: var(--felt); color: var(--felt-ink); font: 600 14px var(--body); padding: 10px 12px; cursor: pointer; white-space: nowrap; }
+.plus:active { transform: scale(.96); }
+.plus:disabled { opacity: .5; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.empty { color: var(--muted); padding: 8px 0; }
+
+form.add { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+form.add input[type="text"] { flex: 1 1 180px; min-width: 0; border: 1px solid var(--line); background: var(--paper); color: var(--ink); border-radius: 10px; padding: 10px 12px; font: 15px var(--body); }
+form.add label { display: flex; gap: 6px; align-items: center; color: var(--muted); }
+form.add button { border: 0; border-radius: 10px; background: var(--ink); color: var(--sheet); font: 600 14px var(--body); padding: 10px 14px; cursor: pointer; }
+
+ul.log { list-style: none; margin: 0; padding: 0; }
+ul.log li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); }
+ul.log li:first-child { border-top: 0; }
+ul.log time { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.undo { background: transparent; border: 1px solid var(--line); color: var(--muted); border-radius: 8px; padding: 4px 10px; font: 13px var(--body); cursor: pointer; }
+.undo.confirm { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+
+.toast { position: fixed; left: 50%; bottom: max(20px, env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--ink); color: var(--sheet); padding: 10px 16px; border-radius: 10px; font-weight: 500; max-width: calc(100% - 32px); }
+.status { color: var(--muted); font-size: 13px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Toepen Streeplijst</h1>
+    <p>Wie heeft er het vaakst verloren? Eén streep per verloren potje.</p>
+  </header>
+
+  <section class="card" aria-labelledby="stand-titel">
+    <h2 id="stand-titel">Stand</h2>
+    <div class="tabs" role="group" aria-label="Periode">
+      <button type="button" data-period="avond" aria-pressed="false">Vanavond</button>
+      <button type="button" data-period="maand" aria-pressed="false">Deze maand</button>
+      <button type="button" data-period="altijd" aria-pressed="true">Altijd</button>
+    </div>
+    <ol class="board" id="board"><li class="empty">Stand laden…</li></ol>
+  </section>
+
+  <section class="card" aria-labelledby="speler-titel">
+    <h2 id="speler-titel">Speler toevoegen</h2>
+    <form class="add" id="add-form">
+      <input type="text" id="new-name" maxlength="30" placeholder="Naam" autocomplete="off" required>
+      <label><input type="checkbox" id="new-guest"> Gast</label>
+      <button type="submit">Toevoegen</button>
+    </form>
+  </section>
+
+  <section class="card" aria-labelledby="log-titel">
+    <h2 id="log-titel">Laatste verliezen</h2>
+    <ul class="log" id="log"><li class="empty">Nog geen verliezen.</li></ul>
+  </section>
+
+  <p class="status" id="status"></p>
+</main>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const SUPABASE_URL = "https://ghnmlxgevbulijkwdmqq.supabase.co";
+const SUPABASE_KEY = "sb_publishable_rKV5N1N9TFuMbQ7_jP_JwA_HblVBJ_1";
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let players = [];
+let losses = [];   // {id, player_id, created_at}
+let period = "altijd";
+try { period = localStorage.getItem("period") || "altijd"; } catch (e) {}
+
+const $ = (id) => document.getElementById(id);
+
+function periodStart(p) {
+  const now = new Date();
+  if (p === "maand") return new Date(now.getFullYear(), now.getMonth(), 1);
+  if (p === "avond") {
+    // Een toepavond loopt door na middernacht: de "avond" begint om 06:00.
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 6);
+    if (now < start) start.setDate(start.getDate() - 1);
+    return start;
+  }
+  return null;
+}
+
+function tallySvg(n) {
+  // Streepjes in groepjes van vijf, zoals op een scoreblok. Max 20 tekenen, daarna alleen het getal.
+  const shown = Math.min(n, 20);
+  const groups = [];
+  for (let i = 0; i < shown; i += 5) groups.push(Math.min(5, shown - i));
+  return groups.map((g) => {
+    let lines = "";
+    for (let j = 0; j < Math.min(g, 4); j++) lines += `<line x1="${3 + j * 5}" y1="2" x2="${3 + j * 5}" y2="16" />`;
+    if (g === 5) lines += `<line x1="0" y1="14" x2="21" y2="4" />`;
+    return `<svg width="22" height="18" viewBox="0 0 22 18" aria-hidden="true" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none">${lines}</svg>`;
+  }).join("") + (n > 20 ? "…" : "");
+}
+
+function esc(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
+
+function render() {
+  document.querySelectorAll(".tabs button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.period === period)));
+  const start = periodStart(period);
+  const counts = new Map(players.map((p) => [p.id, 0]));
+  for (const l of losses) {
+    if (start && new Date(l.created_at) < start) continue;
+    if (counts.has(l.player_id)) counts.set(l.player_id, counts.get(l.player_id) + 1);
+  }
+  const rows = players
+    .map((p) => ({ ...p, n: counts.get(p.id) || 0 }))
+    .sort((a, b) => b.n - a.n || a.name.localeCompare(b.name, "nl"));
+
+  const board = $("board");
+  if (!rows.length) {
+    board.innerHTML = `<li class="empty">Nog geen spelers. Voeg hieronder de eerste toe.</li>`;
+  } else {
+    const max = rows[0].n;
+    let rank = 0, prev = null;
+    board.innerHTML = rows.map((r, i) => {
+      if (r.n !== prev) { rank = i + 1; prev = r.n; }
+      const top = max > 0 && r.n === max;
+      return `<li class="${top ? "top" : ""}">
+        <span class="rank">${rank}</span>
+        <span class="who"><span class="name">${esc(r.name)}</span>${r.is_guest ? `<span class="guest">gast</span>` : ""}
+          <span class="tally">${tallySvg(r.n)}</span></span>
+        <span class="count">${r.n}</span>
+        <button class="plus" type="button" data-player="${r.id}" aria-label="Verlies erbij voor ${esc(r.name)}">+1 verloren</button>
+      </li>`;
+    }).join("");
+  }
+
+  const byId = new Map(players.map((p) => [p.id, p]));
+  const recent = losses.slice(0, 10);
+  $("log").innerHTML = recent.length ? recent.map((l) => {
+    const d = new Date(l.created_at);
+    const when = d.toLocaleString("nl-NL", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+    return `<li><span><strong>${esc(byId.get(l.player_id)?.name || "Onbekend")}</strong> verloor <time datetime="${l.created_at}">${when}</time></span>
+      <button class="undo" type="button" data-loss="${l.id}">Ongedaan maken</button></li>`;
+  }).join("") : `<li class="empty">Nog geen verliezen.</li>`;
+}
+
+async function loadAll() {
+  const p = await db.from("players").select("id,name,is_guest").order("name");
+  if (p.error) throw p.error;
+  // Supabase geeft max 1000 rijen per keer, dus we halen de verliezen in stukken op.
+  const all = [];
+  for (let from = 0; ; from += 1000) {
+    const r = await db.from("losses").select("id,player_id,created_at").order("created_at", { ascending: false }).range(from, from + 999);
+    if (r.error) throw r.error;
+    all.push(...r.data);
+    if (r.data.length < 1000) break;
+  }
+  players = p.data; losses = all;
+  render();
+  $("status").textContent = "Bijgewerkt om " + new Date().toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
+}
+
+async function refresh() {
+  try { await loadAll(); }
+  catch (e) { console.error(e); $("status").textContent = "Kan de stand niet ophalen. Controleer je internet en ververs de pagina."; }
+}
+
+let toastTimer;
+function toast(msg) {
+  const t = $("toast"); t.textContent = msg; t.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.hidden = true), 2500);
+}
+
+document.querySelector(".tabs").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-period]"); if (!b) return;
+  period = b.dataset.period;
+  try { localStorage.setItem("period", period); } catch (e) {}
+  render();
+});
+
+$("board").addEventListener("click", async (e) => {
+  const b = e.target.closest("button[data-player]"); if (!b) return;
+  b.disabled = true;
+  const { error } = await db.from("losses").insert({ player_id: b.dataset.player });
+  if (error) { toast("Opslaan lukte niet. Probeer het opnieuw."); b.disabled = false; return; }
+  const name = players.find((p) => p.id === b.dataset.player)?.name;
+  toast(`Streep erbij voor ${name}`);
+  await refresh();
+});
+
+$("log").addEventListener("click", async (e) => {
+  const b = e.target.closest("button[data-loss]"); if (!b) return;
+  if (!b.classList.contains("confirm")) {
+    b.classList.add("confirm"); b.textContent = "Zeker weten?";
+    setTimeout(() => { b.classList.remove("confirm"); b.textContent = "Ongedaan maken"; }, 3000);
+    return;
+  }
+  b.disabled = true;
+  const { error } = await db.from("losses").delete().eq("id", b.dataset.loss);
+  if (error) { toast("Ongedaan maken lukte niet."); b.disabled = false; return; }
+  toast("Streep weggehaald");
+  await refresh();
+});
+
+$("add-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const name = $("new-name").value.trim();
+  if (!name) return;
+  if (players.some((p) => p.name.toLowerCase() === name.toLowerCase())) { toast(`${name} staat er al in.`); return; }
+  const { error } = await db.from("players").insert({ name, is_guest: $("new-guest").checked });
+  if (error) { toast("Toevoegen lukte niet. Probeer het opnieuw."); return; }
+  $("new-name").value = ""; $("new-guest").checked = false;
+  toast(`${name} toegevoegd`);
+  await refresh();
+});
+
+refresh();
+setInterval(() => { if (!document.hidden) refresh(); }, 15000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });
+</script>
+</body>
+</html>
