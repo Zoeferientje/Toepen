@@ -137,8 +137,19 @@ tr.first td { color: var(--danger); font-weight: 700; }
 .won { color: #2f6b3f; font-weight: 600; }
 .empty { color: var(--muted); }
 
-.duo { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
-.duo .cap.luck { background: #2f5a3d; }
+.trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.trio .cap { padding: 14px 12px; }
+.trio .big { font-size: 1.35rem; overflow-wrap: anywhere; margin: 2px 0; }
+.trio .sub { font-size: 13px; line-height: 1.3; }
+.cap.luck { background: #2f5a3d; }
+.cap.smallest { background: #8a5a12; }
+.kpis.two { grid-template-columns: repeat(2, 1fr); }
+.ptable td, .ptable th { text-align: right; }
+.ptable th:first-child, .ptable td:first-child { text-align: left; position: sticky; left: 0; background: var(--paper); font-weight: 600; white-space: nowrap; }
+.ptable td:nth-child(2) { text-align: right; font-weight: 400; }
+.ptable small { color: var(--muted); }
+.ptable td.hi { color: var(--danger); font-weight: 700; }
+.ptable td.good { color: #2f6b3f; font-weight: 700; }
 .pstats { display: grid; gap: 10px; }
 .pstat { background: var(--paper); border-radius: 12px; padding: 14px; display: grid; gap: 10px; }
 .pstat header { display: flex; align-items: baseline; gap: 8px; }
@@ -241,7 +252,7 @@ const S = {
   result: null,     // uitslag om te tonen na afsluiten
   busy: false,
 };
-try { S.homePeriod = localStorage.getItem("homePeriod") || "altijd"; } catch (e) {}
+try { S.homePeriod = localStorage.getItem("homePeriod") === "maand" ? "maand" : "altijd"; } catch (e) {}
 
 const nameOf = (pid) => S.players.find((p) => p.id === pid)?.name || "Onbekend";
 const isGuest = (pid) => !!S.players.find((p) => p.id === pid)?.is_guest;
@@ -331,55 +342,52 @@ function renderHome() {
   const start = periodStart(S.homePeriod);
   const games = S.history.filter((g) => !start || new Date(g.ended_at) >= start);
   const stats = statsFor(games);
-  // Pech- en geluksvogel alleen uit spelers met genoeg potjes (3), zodat één potje niet alles bepaalt.
+  // Uitschieters alleen uit spelers met genoeg potjes (3), zodat één potje niet alles bepaalt.
   const minGames = stats.some((s) => s.played >= 3) ? 3 : 1;
   const pool = stats.filter((s) => s.played >= minGames);
-  const worst = pool[0];
-  const best = pool.length > 1 ? [...pool].sort((a, b) => a.fL - b.fL || b.played - a.played)[0] : null;
+  const pick = (score) => [...pool].sort((a, b) => score(b) - score(a) || b.played - a.played)[0];
+  const worst = pick((s) => s.fL);
+  const winner = pick((s) => s.fW);
+  const smallest = pick((s) => s.small / s.played);
   const last = games[0];
   const lastLosers = last ? last.game_players.filter((x) => x.lost).map((x) => nameOf(x.player_id)) : [];
-  const smallTotal = stats.reduce((n, s) => n + s.small, 0);
-  const periodLabel = { maand: "deze maand", jaar: "dit jaar", altijd: "aller tijden" }[S.homePeriod];
-  const meter = (actual, expected, played) => {
-    const a = played ? actual / played : 0, e = played ? expected / played : 0;
-    return `<div class="meter" aria-hidden="true"><span class="fill" style="width:${Math.min(100, a * 100)}%"></span><span class="exp" style="left:${Math.min(100, e * 100)}%"></span></div>`;
-  };
+  const card = (cls, label, s, value) => `<div class="cap ${cls}"><div class="sub">${label}</div>${
+    s && value(s).ok ? `<div class="big">${esc(nameOf(s.pid))}</div><div class="sub">${value(s).text}</div>` : `<div class="big">–</div><div class="sub">nog niemand</div>`}</div>`;
 
   $("view-home").innerHTML = `
     <div class="tabs" role="group" aria-label="Periode" style="margin-top:16px">
-      ${["maand", "jaar", "altijd"].map((p) => `<button type="button" data-home-period="${p}" aria-pressed="${S.homePeriod === p}">${{ maand: "Deze maand", jaar: "Dit jaar", altijd: "Altijd" }[p]}</button>`).join("")}
+      ${["maand", "altijd"].map((p) => `<button type="button" data-home-period="${p}" aria-pressed="${S.homePeriod === p}">${{ maand: "Deze maand", altijd: "All-time" }[p]}</button>`).join("")}
     </div>
 
     <div class="hero">
       <img src="foto.jpg" alt="Het huis aan tafel" onerror="this.remove()">
-      ${worst ? `<div class="duo">
-        <div class="cap"><div class="sub">Pechvogel ${periodLabel}</div><div class="big">${esc(nameOf(worst.pid))}</div><div class="sub">${factorText(worst.fL, "verloren")}</div></div>
-        ${best ? `<div class="cap luck"><div class="sub">Geluksvogel ${periodLabel}</div><div class="big">${esc(nameOf(best.pid))}</div><div class="sub">${factorText(best.fL, "verloren")}</div></div>` : ""}
-      </div>` : `<div class="cap"><div class="big">Nog geen potjes ${periodLabel}</div><div class="sub">Start een spel via Toepen onderin.</div></div>`}
+      ${games.length ? `<div class="trio">
+        ${card("", "Pechvogel", worst, (s) => ({ ok: s.lost > 0, text: `${nl1(s.fL)}× zo vaak verloren als verwacht` }))}
+        ${card("luck", "Grootste winnaar", winner, (s) => ({ ok: s.won > 0, text: `${nl1(s.fW)}× zo vaak gewonnen als verwacht` }))}
+        ${card("smallest", "Kleinste speler", smallest, (s) => ({ ok: s.small > 0, text: `${nl1(s.small / s.played)} kleine spelers per potje` }))}
+      </div>` : `<div class="cap"><div class="big">Nog geen potjes</div><div class="sub">Start een spel via Toepen onderin.</div></div>`}
     </div>
 
-    <div class="kpis">
+    <div class="kpis two">
       <div class="kpi"><b>${games.length}</b><span>potjes gespeeld</span></div>
       <div class="kpi"><b>${last ? esc(lastLosers.join(", ") || "–") : "–"}</b><span>laatste verliezer</span></div>
-      <div class="kpi"><b>${smallTotal}</b><span>kleine spelers</span></div>
     </div>
 
-    <div class="section">
+    <div class="section panel">
       <h2>Per speler</h2>
-      <p class="hint" style="margin:0 0 10px">Het streepje in de balk is wat je zou verwachten als iedereen even goed is: met 3 spelers verlies je 1 op de 3 potjes, met 5 spelers 1 op de 5. Factor 1,0 is precies gemiddeld.</p>
-      ${stats.length ? `<div class="pstats">${stats.map((s) => `
-        <article class="pstat">
-          <header><b>${esc(nameOf(s.pid))}</b>${isGuest(s.pid) ? ' <span class="gtag">gast</span>' : ""}<span>${s.played} ${s.played === 1 ? "potje" : "potjes"}</span></header>
-          <div class="srow lostrow">
-            <span class="k">Verloren</span><span class="v">${s.lost} <small>(${pct(s.lost, s.played)})</small></span><span class="f">factor ${nl1(s.fL)}</span>
-            ${meter(s.lost, s.expL, s.played)}
-          </div>
-          <div class="srow wonrow">
-            <span class="k">Gewonnen</span><span class="v">${s.won} <small>(${pct(s.won, s.played)})</small></span><span class="f">factor ${nl1(s.fW)}</span>
-            ${meter(s.won, s.expW, s.played)}
-          </div>
-          <div class="srow"><span class="k">Kleine spelers</span><span class="v">${s.small}</span><span class="f">${nl1(s.played ? s.small / s.played : 0)} per potje</span></div>
-        </article>`).join("")}</div>`
+      ${stats.length ? `<div class="tablewrap"><table class="ptable">
+        <thead><tr><th>Speler</th><th>Potjes</th><th>Verloren</th><th>Factor</th><th>Gewonnen</th><th>Factor</th><th>Kleine sp.</th><th>Per potje</th></tr></thead>
+        <tbody>${stats.map((s) => `<tr>
+          <td>${esc(nameOf(s.pid))}${isGuest(s.pid) ? ' <span class="gtag">gast</span>' : ""}</td>
+          <td>${s.played}</td>
+          <td>${s.lost} <small>(${pct(s.lost, s.played)})</small></td>
+          <td class="${s.fL > 1 ? "hi" : ""}">${nl1(s.fL)}</td>
+          <td>${s.won} <small>(${pct(s.won, s.played)})</small></td>
+          <td class="${s.fW > 1 ? "good" : ""}">${nl1(s.fW)}</td>
+          <td>${s.small}</td>
+          <td>${nl1(s.small / s.played)}</td>
+        </tr>`).join("")}</tbody></table></div>
+        <p class="hint">Factor 1,0 is precies gemiddeld. Met 3 spelers verlies je verwacht 1 op de 3 potjes, met 5 spelers 1 op de 5. Factor 2,0 is twee keer zo vaak als verwacht.</p>`
         : `<p class="empty">Nog geen afgeronde potjes in deze periode.</p>`}
     </div>
 
