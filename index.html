@@ -118,7 +118,7 @@ input[type="number"] { width: 90px; font-weight: 700; text-align: center; }
 .hero .sub { opacity: .85; margin-top: 4px; }
 .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
 .kpi { background: var(--paper); border-radius: 12px; padding: 12px; }
-.kpi b { display: block; font: 800 1.6rem/1 var(--display); font-variant-numeric: tabular-nums; }
+.kpi b { display: block; overflow-wrap: anywhere; font: 800 1.6rem/1 var(--display); font-variant-numeric: tabular-nums; }
 .kpi span { font-size: 13px; color: var(--muted); }
 .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
 .tabs button { border: 1px solid #cdb994; background: transparent; color: var(--ink); border-radius: 999px; padding: 6px 14px; font-weight: 500; font-size: 14px; }
@@ -188,16 +188,9 @@ nav.tabbar a[aria-current="page"] { color: var(--paper); }
 .status { color: var(--muted); font-size: 13px; margin-top: 16px; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 /* Compact spelscherm: 5 spelers passen zonder scrollen op een telefoon. */
-body.ingame .wordmark { display: none !important; }
-body.ingame .pill { grid-column: 2; grid-row: 1; margin: 0 !important; white-space: nowrap; }
-body.ingame .topbar { padding-top: max(8px, env(safe-area-inset-top)); padding-bottom: 8px; }
-body.ingame .wordmark { font-size: 1.3rem; padding: 4px 10px; border-width: 2px; }
-body.ingame .wordmark .card { width: 16px; height: 22px; font-size: 11px; }
-body.ingame .topbtn { font-size: 11px; padding: 2px; }
-body.ingame .topbtn svg { width: 22px; height: 22px; }
-body.ingame .pill { margin-top: 6px; padding: 2px 12px; font-size: 13px; }
 body.ingame main { padding-bottom: calc(80px + var(--navroom) + env(safe-area-inset-bottom)); }
-.players { gap: 8px; margin-top: 10px; }
+.players { gap: 8px; margin-top: 4px; }
+.target { margin: 8px 0 0; font-size: 13px; color: var(--muted); text-align: center; }
 .pcard { padding: 6px 10px; gap: 8px; border-radius: 10px; }
 .pname { font-size: 1rem; line-height: 1.2; }
 .pscore { font-size: 2rem; line-height: 1; }
@@ -225,16 +218,7 @@ nav.tabbar a svg { width: 22px; height: 22px; }
 
 <header class="topbar">
   <div class="wrap">
-    <button class="topbtn left" id="btn-next" type="button" hidden>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" fill="currentColor" stroke="none"/><path d="M7 12h9M12.5 8l4 4-4 4" stroke="#3a1820"/></svg>
-      Volgende ronde
-    </button>
     <div class="wordmark" aria-label="WB Toep">WB T<span class="card">♥</span>EP</div>
-    <button class="topbtn right" id="btn-restart" type="button" hidden>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v5h-5"/></svg>
-      Herstart spel
-    </button>
-    <div class="pill" id="pill" hidden></div>
   </div>
 </header>
 
@@ -335,10 +319,6 @@ function render() {
   document.querySelectorAll("nav.tabbar a").forEach((a) => { if (a.dataset.route === r) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
   const inGame = r === "spel" && S.active && !S.result;
   document.body.classList.toggle("ingame", !!inGame);
-  $("btn-next").hidden = !inGame;
-  $("btn-restart").hidden = !inGame;
-  $("pill").hidden = !inGame;
-  if (inGame) $("pill").innerHTML = `Ronde ${S.active.round}<span class="sep">|</span>${ICON.trophy.replace("<svg", '<svg width="18" height="18"')} Tot ${S.active.target}`;
   if (r === "home") renderHome(); else renderSpel();
 }
 
@@ -359,6 +339,15 @@ function statsFor(games) {
       s.played++; s.expL += 1 / n; s.expW += 1 / n; s.small += x.small_total || 0;
       if (x.lost) s.lost++; if (x.won) s.won++;
       m.set(x.player_id, s);
+    }
+  }
+  // Reeksen: potjes van oud naar nieuw doorlopen per speler.
+  for (const g of [...games].sort((a, b) => new Date(a.ended_at) - new Date(b.ended_at))) {
+    for (const x of g.game_players) {
+      const s = m.get(x.player_id);
+      if (x.lost) { s.curL = (s.curL || 0) + 1; s.curN = 0; }
+      else { s.curN = (s.curN || 0) + 1; s.curL = 0; }
+      s.maxL = Math.max(s.maxL || 0, s.curL); s.maxN = Math.max(s.maxN || 0, s.curN);
     }
   }
   const list = [...m.values()];
@@ -389,6 +378,8 @@ function renderHome() {
   const totSmall = stats.reduce((n, x) => n + x.small, 0), totPlayed = stats.reduce((n, x) => n + x.played, 0);
   const avgSmall = totPlayed ? totSmall / totPlayed : 0;
   for (const x of stats) x.fS = avgSmall ? (x.small / x.played) / avgSmall : 0;
+  const recL = [...stats].sort((a, b) => b.maxL - a.maxL || b.curL - a.curL)[0];
+  const recN = [...stats].sort((a, b) => b.maxN - a.maxN || b.curN - a.curN)[0];
   const last = games[0];
   const lastLosers = last ? last.game_players.filter((x) => x.lost).map((x) => nameOf(x.player_id)) : [];
   const card = (cls, label, s, value) => `<div class="cap ${cls}"><div class="sub">${label}</div>${
@@ -411,12 +402,14 @@ function renderHome() {
     <div class="kpis two">
       <div class="kpi"><b>${games.length}</b><span>potjes gespeeld</span></div>
       <div class="kpi"><b>${last ? esc(lastLosers.join(", ") || "–") : "–"}</b><span>laatste verliezer</span></div>
+      <div class="kpi"><b>${recL && recL.maxL ? `${esc(nameOf(recL.pid))} · ${recL.maxL}` : "–"}</b><span>langste verliesreeks${recL && recL.curL === recL.maxL && recL.maxL > 1 ? " (loopt nog)" : ""}</span></div>
+      <div class="kpi"><b>${recN && recN.maxN ? `${esc(nameOf(recN.pid))} · ${recN.maxN}` : "–"}</b><span>langst zonder verlies${recN && recN.curN === recN.maxN && recN.maxN > 1 ? " (loopt nog)" : ""}</span></div>
     </div>
 
     <div class="section panel">
       <h2>Per speler</h2>
       ${stats.length ? `<div class="tablewrap"><table class="ptable">
-        <thead><tr><th>Speler</th><th>Potjes</th><th>Verloren</th><th>Factor</th><th>Gewonnen</th><th>Factor</th><th>Kleine sp.</th><th>Per potje</th><th>Factor</th></tr></thead>
+        <thead><tr><th>Speler</th><th>Potjes</th><th>Verloren</th><th>Factor</th><th>Gewonnen</th><th>Factor</th><th>Kleine sp.</th><th>Per potje</th><th>Factor</th><th>Verliesreeks</th><th>Zonder verlies</th></tr></thead>
         <tbody>${stats.map((s) => `<tr>
           <td>${esc(nameOf(s.pid))}${isGuest(s.pid) ? ' <span class="gtag">gast</span>' : ""}</td>
           <td>${s.played}</td>
@@ -427,8 +420,10 @@ function renderHome() {
           <td>${s.small}</td>
           <td>${nl1(s.small / s.played)}</td>
           <td class="${s.fS > 1 ? "warmth" : ""}">${nl1(s.fS)}</td>
+          <td>${s.curL} <small>(rec. ${s.maxL})</small></td>
+          <td>${s.curN} <small>(rec. ${s.maxN})</small></td>
         </tr>`).join("")}</tbody></table></div>
-        <p class="hint">Factor 1,0 is precies gemiddeld. Met 3 spelers verlies je verwacht 1 op de 3 potjes, met 5 spelers 1 op de 5. Factor 2,0 is twee keer zo vaak als verwacht. Bij kleine spelers vergelijkt de factor jouw gemiddelde per potje met dat van iedereen samen.</p>`
+        <p class="hint">Factor 1,0 is precies gemiddeld. Met 3 spelers verlies je verwacht 1 op de 3 potjes, met 5 spelers 1 op de 5. Factor 2,0 is twee keer zo vaak als verwacht. Bij kleine spelers vergelijkt de factor jouw gemiddelde per potje met dat van iedereen samen. Reeksen: het eerste getal is de reeks van nu, "rec." het record.</p>`
         : `<p class="empty">Nog geen afgeronde potjes in deze periode.</p>`}
     </div>
 
@@ -479,6 +474,7 @@ function renderSetup() {
 function renderGame() {
   const t = S.active.target;
   $("view-spel").innerHTML = `
+    <p class="target">Spelen tot <b>${t}</b></p>
     <div class="players">${S.gps.map((gp) => {
       const cls = gp.score >= t ? "out" : gp.score === t - 1 ? "danger" : "";
       const state = gp.score >= t ? `${ICON.warn} Verloren` : gp.score === t - 1 ? `${ICON.warn} Nog 1 punt` : "";
@@ -636,26 +632,6 @@ $("view-spel").addEventListener("click", async (e) => {
 });
 
 $("view-spel").addEventListener("click", (e) => { if (e.target.id === "btn-home") S.result = null; });
-
-$("btn-next").addEventListener("click", async () => {
-  if (!S.active) return;
-  S.active.round++; render();
-  const r = await db.rpc("next_round", { p_game: S.active.id });
-  if (r.error) { toast("Opslaan lukte niet."); return refresh("game"); }
-  if (typeof r.data === "number") { S.active.round = r.data; render(); }
-});
-
-$("btn-restart").addEventListener("click", async () => {
-  if (!S.active) return;
-  const ok = await ask("Spel herstarten?", "Alle scores en kleine spelers gaan terug naar 0 en de ronde naar 1. Dezelfde spelers blijven meedoen.", [
-    { label: "Ja, herstarten", value: true }, { label: "Terug", value: false, style: "ghost" }]);
-  if (!ok) return;
-  const a = await db.from("game_players").update({ score: 0, small_current: 0, small_total: 0 }).eq("game_id", S.active.id);
-  const b = await db.from("games").update({ round: 1 }).eq("id", S.active.id);
-  if (a.error || b.error) toast("Herstarten lukte niet helemaal.");
-  else toast("Spel herstart");
-  refresh("game");
-});
 
 async function endGame() {
   await refresh("game"); // eerst de laatste stand ophalen
