@@ -170,6 +170,12 @@ tr.first td { color: var(--danger); font-weight: 700; }
 .lostrow .fill { background: var(--danger); } .wonrow .fill { background: #2f6b3f; }
 .meter .exp { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--ink); }
 
+.shame { margin: 0 0 12px; background: var(--wine); color: var(--white); border-radius: 16px; overflow: hidden; }
+.shame img { display: block; width: 100%; aspect-ratio: 1; max-width: 100%; object-fit: cover; }
+.shame figcaption { padding: 14px 16px 18px; display: grid; gap: 6px; }
+.shame .who { font: 800 1.5rem/1.1 var(--display); }
+.shame .quote { font-size: 1.15rem; font-style: italic; }
+.shame .quote::before { content: "“"; } .shame .quote::after { content: "”"; }
 /* Onderbalk */
 nav.tabbar { position: fixed; left: 0; right: 0; bottom: 0; background: var(--night); padding-bottom: calc(env(safe-area-inset-bottom) + var(--navroom)); z-index: 5; }
 nav.tabbar .wrap { display: grid; grid-template-columns: 1fr 1fr; }
@@ -298,10 +304,21 @@ async function loadHistory() {
   if (r.error) throw r.error;
   S.history = r.data;
 }
+async function showFinished(id) {
+  const r = await db.from("games").select("status,game_players(player_id,score,lost,won)").eq("id", id).maybeSingle();
+  if (r.error || !r.data || r.data.status !== "finished") return;
+  const gp = r.data.game_players;
+  S.result = { losers: gp.filter((x) => x.lost).map((x) => nameOf(x.player_id)), winners: gp.filter((x) => x.won).map((x) => nameOf(x.player_id)) };
+  loadHistory().then(() => { if (route() === "home") render(); }).catch(() => {});
+}
 async function refresh(which = "all") {
   try {
     if (which === "all") { await loadPlayers(); await Promise.all([loadActive(), loadHistory()]); }
-    else if (which === "game") await loadActive();
+    else if (which === "game") {
+      const prev = S.active?.id;
+      await loadActive();
+      if (prev && !S.active && !S.result) await showFinished(prev);
+    }
     $("status").textContent = "";
     render();
   } catch (e) {
@@ -506,13 +523,27 @@ function renderGame() {
     </div>`;
 }
 
+// Foto en boodschap per vaste speler, getoond als die verliest.
+const LOSER_CARD = {
+  henny: { foto: "fotos/henny.jpg", tekst: "Een echte praeses verliest niet!" },
+  vino:  { foto: "fotos/vino.jpg",  tekst: "Haha verloren knor" },
+  siem:  { foto: "fotos/siem.jpg",  tekst: "Verliezer net als Feyenoord" },
+  luca:  { foto: "fotos/luca.jpg",  tekst: "Verliezen nog erger dan je gonorroe" },
+  tom:   { foto: "fotos/tom.jpg",   tekst: "Verliezen zoals het hoort HJ" },
+};
 function renderResult() {
   const r = S.result;
+  const cards = r.losers.map((n) => {
+    const c = LOSER_CARD[n.toLowerCase()];
+    return `<figure class="shame">
+      ${c ? `<img src="${c.foto}" alt="${esc(n)}">` : ""}
+      <figcaption><span class="who">${esc(n)} heeft verloren</span><span class="quote">${esc(c ? c.tekst : "Volgende keer beter!")}</span></figcaption>
+    </figure>`;
+  }).join("");
   $("view-spel").innerHTML = `
+    <div class="section">${cards || '<div class="panel"><h2>Niemand verloren</h2></div>'}</div>
     <div class="section panel">
-      <h2>Uitslag</h2>
-      <p>Verloren: <span class="lost">${r.losers.map(esc).join(", ") || "niemand"}</span></p>
-      <p>Gewonnen: <span class="won">${r.winners.map(esc).join(", ") || "–"}</span></p>
+      <p style="margin:0">Gewonnen: <span class="won">${r.winners.map(esc).join(", ") || "–"}</span></p>
     </div>
     <div class="endbar">
       <button class="btn" type="button" id="btn-new">Nieuw spel</button>
