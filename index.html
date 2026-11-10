@@ -3,121 +3,186 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Toepen Streeplijst</title>
-<meta name="description" content="Wie heeft het vaakst verloren met toepen?">
+<meta name="theme-color" content="#3a1820">
+<title>WB Toep</title>
+<meta name="description" content="Toepen bijhouden in huis: scores, verliezers en statistieken.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-/* Layout: één kolom als een streeplijst op papier; stand bovenaan, invoer en logboek eronder. */
+/* Eén vaste look, zoals een kaarttafel: bordeauxrode kaarten op crème, met een rode waarschuwing als iemand bijna verliest. */
 :root {
-  --paper: #f6f4ee;
-  --sheet: #ffffff;
-  --ink: #1d2320;
-  --muted: #69716c;
-  --line: #e2e0d8;
-  --accent: #b3261e;      /* rood van harten: de verliezer */
-  --accent-soft: #f7e3e1;
-  --felt: #1f5a43;        /* groen van de kaarttafel: knoppen */
-  --felt-ink: #ffffff;
+  --night: #3a1820;      /* balken boven en onder */
+  --wine: #64212f;       /* spelerkaarten */
+  --wine-2: #7a2a3a;
+  --cream: #ead8b3;      /* achtergrond */
+  --paper: #f6ecd6;      /* lichte vlakken */
+  --ink: #2a1418;
+  --muted: #7d6a5c;
+  --white: #ffffff;
+  --danger: #d8262c;     /* 1 punt voor verlies */
+  --gold: #e3b341;
+  --warn: #f0a330;
   --display: "Bricolage Grotesque", "Arial Black", system-ui, sans-serif;
   --body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   color-scheme: light;
 }
-@media (prefers-color-scheme: dark) {
-  :root {
-    --paper: #121614; --sheet: #1a201d; --ink: #ecefe9; --muted: #9aa49e; --line: #2c3430;
-    --accent: #ff7a6e; --accent-soft: #3a2220; --felt: #3f9c76; --felt-ink: #0d1411;
-    color-scheme: dark;
-  }
-}
 * { box-sizing: border-box; }
-html, body { margin: 0; }
-body {
-  background: var(--paper); color: var(--ink); font: 15px/1.5 var(--body);
-  padding: max(20px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(40px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
-}
-main { max-width: 620px; margin: 0 auto; display: grid; gap: 22px; }
-header h1 { font: 800 clamp(2rem, 8vw, 2.8rem)/1 var(--display); margin: 0; letter-spacing: -0.02em; }
-header p { margin: 6px 0 0; color: var(--muted); }
-.card { background: var(--sheet); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
-h2 { font: 600 1.1rem/1.2 var(--display); margin: 0 0 12px; }
+html, body { margin: 0; min-height: 100%; }
+html { background: var(--cream); }
+body { background: var(--cream); color: var(--ink); font: 16px/1.45 var(--body); -webkit-tap-highlight-color: transparent; }
+button { font: inherit; cursor: pointer; }
+button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+[hidden] { display: none !important; }
 
+.wrap { max-width: 560px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
+main { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+
+/* Bovenbalk */
+.topbar { background: var(--night); color: var(--paper); padding-top: max(14px, env(safe-area-inset-top)); padding-bottom: 16px; box-shadow: 0 4px 14px rgba(0,0,0,.18); }
+.topbar .wrap { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; }
+.wordmark { font: 800 2rem/1 var(--display); letter-spacing: .02em; color: var(--cream); border: 3px solid var(--cream); border-radius: 10px; padding: 6px 14px; text-align: center; justify-self: center; grid-column: 2; white-space: nowrap; display: flex; align-items: center; gap: 8px; }
+.wordmark .card { display: inline-grid; place-items: center; width: 22px; height: 30px; background: var(--paper); color: var(--danger); border-radius: 3px; font: 700 14px var(--body); transform: rotate(-6deg); }
+.topbtn { background: none; border: 0; color: var(--paper); display: grid; justify-items: center; gap: 2px; font-size: 13px; padding: 6px; border-radius: 10px; }
+.topbtn svg { width: 30px; height: 30px; }
+.topbtn:disabled { opacity: .35; }
+.topbtn.left { justify-self: start; grid-column: 1; grid-row: 1; } .topbtn.right { justify-self: end; grid-column: 3; grid-row: 1; }
+.wordmark { grid-row: 1; }
+.pill { margin: 12px auto 0; width: fit-content; background: rgba(255,255,255,.12); border-radius: 999px; padding: 5px 16px; font-size: 15px; display: flex; gap: 10px; align-items: center; }
+.pill .sep { opacity: .5; }
+
+h2 { font: 800 1.35rem/1.15 var(--display); margin: 0 0 10px; }
+h3 { font: 600 1rem/1.2 var(--display); margin: 0 0 8px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-size: 12px; }
+.section { margin-top: 20px; }
+.panel { background: var(--paper); border-radius: 14px; padding: 16px; }
+
+/* Spelerkaarten tijdens het spel */
+.players { display: grid; gap: 12px; margin-top: 16px; }
+.pcard { background: var(--wine); color: var(--white); border-radius: 12px; padding: 14px 14px 14px 16px; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; transition: background .2s; }
+.pcard.danger { background: var(--danger); }
+.pcard.out { background: #1d0c10; }
+.pinfo { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 4px 14px; min-width: 0; }
+.pname { grid-column: 1 / -1; font-size: 1.25rem; font-weight: 600; overflow-wrap: anywhere; display: flex; align-items: center; gap: 8px; }
+.pname .tag { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; border: 1px solid rgba(255,255,255,.5); border-radius: 4px; padding: 0 5px; }
+.pscore { font: 600 3rem/1 var(--body); font-variant-numeric: tabular-nums; min-width: 2ch; }
+.trophy { display: inline-flex; align-items: center; gap: 6px; background: var(--white); color: var(--ink); border-radius: 999px; padding: 3px 10px; font-weight: 700; font-size: 15px; width: fit-content; }
+.trophy svg { width: 16px; height: 16px; }
+.pstate { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.pstate svg { width: 18px; height: 18px; color: var(--warn); }
+.pcard.danger .pstate svg { color: var(--white); }
+.pbtns { display: flex; gap: 10px; }
+.pbtn { width: 64px; height: 64px; border-radius: 10px; border: 0; background: var(--white); color: var(--wine); display: grid; place-items: center; }
+.pbtn svg { width: 34px; height: 34px; }
+.pbtn:active { transform: scale(.94); }
+.pbtn:disabled { opacity: .45; }
+.pcard.danger .pbtn { color: var(--danger); }
+
+.endbar { margin-top: 18px; display: grid; gap: 10px; }
+.btn { border: 0; border-radius: 12px; padding: 15px 18px; font-weight: 700; font-size: 17px; background: var(--wine); color: var(--white); }
+.btn.dark { background: var(--night); }
+.btn.ghost { background: transparent; color: var(--muted); font-weight: 500; font-size: 14px; padding: 8px; text-decoration: underline; }
+.btn:disabled { opacity: .5; }
+
+/* Startscherm */
+.choose { display: grid; gap: 8px; }
+.choice { display: flex; align-items: center; gap: 12px; background: var(--white); border-radius: 12px; padding: 12px 14px; font-weight: 600; font-size: 17px; border: 2px solid transparent; }
+.choice:has(input:checked) { border-color: var(--wine); background: #fff7ee; }
+.choice input { width: 22px; height: 22px; accent-color: var(--wine); }
+.choice .tag { margin-left: auto; font-size: 12px; color: var(--muted); font-weight: 500; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.row input[type="text"] { flex: 1 1 160px; min-width: 0; }
+input[type="text"], input[type="number"] { border: 1px solid #cdb994; background: var(--white); color: var(--ink); border-radius: 10px; padding: 12px; font: 16px var(--body); }
+input[type="number"] { width: 90px; font-weight: 700; text-align: center; }
+.smallbtn { border: 0; border-radius: 10px; padding: 12px 14px; background: var(--night); color: var(--paper); font-weight: 600; }
+.hint { color: var(--muted); font-size: 14px; margin: 6px 0 0; }
+
+/* Home */
+.hero { position: relative; border-radius: 16px; overflow: hidden; background: var(--wine); color: var(--white); margin-top: 16px; }
+.hero img { display: block; width: 100%; max-height: 260px; object-fit: cover; }
+.hero .cap { padding: 16px; }
+.hero .big { font: 800 2rem/1.05 var(--display); }
+.hero .sub { opacity: .85; margin-top: 4px; }
+.kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
+.kpi { background: var(--paper); border-radius: 12px; padding: 12px; }
+.kpi b { display: block; font: 800 1.6rem/1 var(--display); font-variant-numeric: tabular-nums; }
+.kpi span { font-size: 13px; color: var(--muted); }
 .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
-.tabs button { border: 1px solid var(--line); background: transparent; color: var(--ink); border-radius: 999px; padding: 6px 14px; font: 500 14px var(--body); cursor: pointer; }
-.tabs button[aria-pressed="true"] { background: var(--ink); color: var(--sheet); border-color: var(--ink); }
+.tabs button { border: 1px solid #cdb994; background: transparent; color: var(--ink); border-radius: 999px; padding: 6px 14px; font-weight: 500; font-size: 14px; }
+.tabs button[aria-pressed="true"] { background: var(--night); color: var(--paper); border-color: var(--night); }
+.tablewrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th, td { text-align: right; padding: 9px 6px; border-top: 1px solid #e2cfa9; white-space: nowrap; }
+th { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; border-top: 0; }
+th:first-child, td:first-child { text-align: left; }
+th:nth-child(2) { text-align: left; }
+td:nth-child(2) { text-align: left; font-weight: 600; white-space: normal; }
+tr.first td { color: var(--danger); font-weight: 700; }
+.bar { height: 6px; border-radius: 3px; background: var(--danger); display: block; margin-top: 4px; }
+.games { list-style: none; margin: 0; padding: 0; }
+.games li { padding: 10px 0; border-top: 1px solid #e2cfa9; display: grid; gap: 2px; }
+.games li:first-child { border-top: 0; }
+.games .when { font-size: 13px; color: var(--muted); }
+.lost { color: var(--danger); font-weight: 700; }
+.won { color: #2f6b3f; font-weight: 600; }
+.empty { color: var(--muted); }
 
-ol.board { list-style: none; margin: 0; padding: 0; display: grid; }
-ol.board li { display: grid; grid-template-columns: 2rem 1fr auto auto; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
-ol.board li:first-child { border-top: 0; }
-.rank { font: 800 1.2rem var(--display); color: var(--muted); text-align: center; font-variant-numeric: tabular-nums; }
-li.top .rank { color: var(--accent); }
-.who { min-width: 0; }
-.name { font-weight: 600; overflow-wrap: anywhere; }
-.guest { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; margin-left: 6px; vertical-align: 2px; }
-.tally { display: block; color: var(--ink); margin-top: 2px; min-height: 18px; }
-.tally svg { vertical-align: middle; margin-right: 6px; }
-li.top .tally { color: var(--accent); }
-.count { font: 800 1.5rem var(--display); font-variant-numeric: tabular-nums; min-width: 2ch; text-align: right; }
-li.top .count { color: var(--accent); }
-.plus { border: 0; border-radius: 10px; background: var(--felt); color: var(--felt-ink); font: 600 14px var(--body); padding: 10px 12px; cursor: pointer; white-space: nowrap; }
-.plus:active { transform: scale(.96); }
-.plus:disabled { opacity: .5; }
-button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Onderbalk */
+nav.tabbar { position: fixed; left: 0; right: 0; bottom: 0; background: var(--night); padding-bottom: env(safe-area-inset-bottom); z-index: 5; }
+nav.tabbar .wrap { display: grid; grid-template-columns: 1fr 1fr; }
+nav.tabbar a { color: #b9a69a; text-decoration: none; display: grid; justify-items: center; gap: 2px; padding: 10px 0 12px; font-size: 14px; font-weight: 600; }
+nav.tabbar a svg { width: 26px; height: 26px; }
+nav.tabbar a[aria-current="page"] { color: var(--paper); }
 
-.empty { color: var(--muted); padding: 8px 0; }
+/* Dialoog */
+.overlay { position: fixed; inset: 0; background: rgba(20,8,10,.6); display: grid; place-items: center; z-index: 10; padding: 16px; }
+.dialog { background: var(--paper); border-radius: 16px; padding: 20px; width: min(420px, 100%); display: grid; gap: 10px; max-height: 90vh; overflow-y: auto; }
+.dialog h2 { margin: 0; }
+.dialog p { margin: 0 0 6px; color: var(--muted); }
+.dialog .btn { width: 100%; }
 
-form.add { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-form.add input[type="text"] { flex: 1 1 180px; min-width: 0; border: 1px solid var(--line); background: var(--paper); color: var(--ink); border-radius: 10px; padding: 10px 12px; font: 15px var(--body); }
-form.add label { display: flex; gap: 6px; align-items: center; color: var(--muted); }
-form.add button { border: 0; border-radius: 10px; background: var(--ink); color: var(--sheet); font: 600 14px var(--body); padding: 10px 14px; cursor: pointer; }
-
-ul.log { list-style: none; margin: 0; padding: 0; }
-ul.log li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); }
-ul.log li:first-child { border-top: 0; }
-ul.log time { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
-.undo { background: transparent; border: 1px solid var(--line); color: var(--muted); border-radius: 8px; padding: 4px 10px; font: 13px var(--body); cursor: pointer; }
-.undo.confirm { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
-
-.toast { position: fixed; left: 50%; bottom: max(20px, env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--ink); color: var(--sheet); padding: 10px 16px; border-radius: 10px; font-weight: 500; max-width: calc(100% - 32px); }
-.status { color: var(--muted); font-size: 13px; }
+.toast { position: fixed; left: 50%; bottom: calc(86px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--night); color: var(--paper); padding: 10px 16px; border-radius: 10px; font-weight: 500; max-width: calc(100% - 32px); z-index: 11; }
+.status { color: var(--muted); font-size: 13px; margin-top: 16px; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 </head>
 <body>
-<main>
-  <header>
-    <h1>Toepen Streeplijst</h1>
-    <p>Wie heeft er het vaakst verloren? Eén streep per verloren potje.</p>
-  </header>
 
-  <section class="card" aria-labelledby="stand-titel">
-    <h2 id="stand-titel">Stand</h2>
-    <div class="tabs" role="group" aria-label="Periode">
-      <button type="button" data-period="avond" aria-pressed="false">Vanavond</button>
-      <button type="button" data-period="maand" aria-pressed="false">Deze maand</button>
-      <button type="button" data-period="altijd" aria-pressed="true">Altijd</button>
-    </div>
-    <ol class="board" id="board"><li class="empty">Stand laden…</li></ol>
-  </section>
+<header class="topbar">
+  <div class="wrap">
+    <button class="topbtn left" id="btn-next" type="button" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" fill="currentColor" stroke="none"/><path d="M7 12h9M12.5 8l4 4-4 4" stroke="#3a1820"/></svg>
+      Volgende ronde
+    </button>
+    <div class="wordmark" aria-label="WB Toep">WB T<span class="card">♥</span>EP</div>
+    <button class="topbtn right" id="btn-restart" type="button" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v5h-5"/></svg>
+      Herstart spel
+    </button>
+  </div>
+  <div class="pill" id="pill" hidden></div>
+</header>
 
-  <section class="card" aria-labelledby="speler-titel">
-    <h2 id="speler-titel">Speler toevoegen</h2>
-    <form class="add" id="add-form">
-      <input type="text" id="new-name" maxlength="30" placeholder="Naam" autocomplete="off" required>
-      <label><input type="checkbox" id="new-guest"> Gast</label>
-      <button type="submit">Toevoegen</button>
-    </form>
-  </section>
-
-  <section class="card" aria-labelledby="log-titel">
-    <h2 id="log-titel">Laatste verliezen</h2>
-    <ul class="log" id="log"><li class="empty">Nog geen verliezen.</li></ul>
-  </section>
-
+<main class="wrap">
+  <section id="view-home"></section>
+  <section id="view-spel" hidden></section>
   <p class="status" id="status"></p>
 </main>
+
+<nav class="tabbar" aria-label="Menu">
+  <div class="wrap">
+    <a href="#home" data-route="home">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>
+      Home
+    </a>
+    <a href="#spel" data-route="spel">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="5" width="11" height="15" rx="2" transform="rotate(-10 8.5 12.5)"/><rect x="10" y="4" width="11" height="15" rx="2" transform="rotate(10 15.5 11.5)" fill="currentColor"/></svg>
+      Toepen
+    </a>
+  </div>
+</nav>
+
+<div class="overlay" id="overlay" hidden><div class="dialog" id="dialog" role="dialog" aria-modal="true"></div></div>
 <div class="toast" id="toast" hidden></div>
 
 <script>
@@ -125,154 +190,382 @@ const SUPABASE_URL = "https://ghnmlxgevbulijkwdmqq.supabase.co";
 const SUPABASE_KEY = "sb_publishable_rKV5N1N9TFuMbQ7_jP_JwA_HblVBJ_1";
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-let players = [];
-let losses = [];   // {id, player_id, created_at}
-let period = "altijd";
-try { period = localStorage.getItem("period") || "altijd"; } catch (e) {}
-
 const $ = (id) => document.getElementById(id);
+const esc = (s) => { const d = document.createElement("div"); d.textContent = s ?? ""; return d.innerHTML; };
 
+const ICON = {
+  plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="square"><path d="M12 4v16M4 12h16"/></svg>',
+  minus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="square"><path d="M4 12h16"/></svg>',
+  trophy: '<svg viewBox="0 0 24 24" fill="#e3b341" stroke="#9a7317" stroke-width="1.2"><path d="M7 3h10v4a5 5 0 0 1-10 0z"/><path d="M7 5H4a3 3 0 0 0 3 4M17 5h3a3 3 0 0 1-3 4" fill="none" stroke-width="1.8"/><path d="M10 12h4v4h-4zM7 19h10v2H7zM9 16h6v3H9z"/></svg>',
+  warn: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 1 21h22z"/><path d="M12 9v5M12 17v.5" stroke="#3a1820" stroke-width="2.2" stroke-linecap="round"/></svg>',
+};
+
+/* ---------- Status ---------- */
+const S = {
+  players: [],      // {id, name, is_guest}
+  active: null,     // {id, target, round, started_at}
+  gps: [],          // deelnemers van het actieve spel {id, player_id, score}
+  history: [],      // afgeronde spellen met deelnemers
+  homePeriod: "altijd",
+  result: null,     // uitslag om te tonen na afsluiten
+  busy: false,
+};
+try { S.homePeriod = localStorage.getItem("homePeriod") || "altijd"; } catch (e) {}
+
+const nameOf = (pid) => S.players.find((p) => p.id === pid)?.name || "Onbekend";
+const isGuest = (pid) => !!S.players.find((p) => p.id === pid)?.is_guest;
+const winsOf = (pid) => S.history.reduce((n, g) => n + g.game_players.filter((x) => x.player_id === pid && x.won).length, 0);
+
+/* ---------- Data ophalen ---------- */
+async function loadPlayers() {
+  const r = await db.from("players").select("id,name,is_guest").order("name");
+  if (r.error) throw r.error;
+  S.players = r.data;
+}
+async function loadActive() {
+  const g = await db.from("games").select("id,target,round,started_at").eq("status", "active").maybeSingle();
+  if (g.error) throw g.error;
+  S.active = g.data;
+  if (S.active) {
+    const r = await db.from("game_players").select("id,player_id,score").eq("game_id", S.active.id);
+    if (r.error) throw r.error;
+    // Volgorde vast houden: vaste spelers eerst, dan op naam.
+    S.gps = r.data.sort((a, b) => isGuest(a.player_id) - isGuest(b.player_id) || nameOf(a.player_id).localeCompare(nameOf(b.player_id), "nl"));
+  } else S.gps = [];
+}
+async function loadHistory() {
+  const r = await db.from("games").select("id,ended_at,target,game_players(player_id,score,lost,won)").eq("status", "finished").order("ended_at", { ascending: false }).limit(1000);
+  if (r.error) throw r.error;
+  S.history = r.data;
+}
+async function refresh(which = "all") {
+  try {
+    if (which === "all") { await loadPlayers(); await Promise.all([loadActive(), loadHistory()]); }
+    else if (which === "game") await loadActive();
+    $("status").textContent = "";
+    render();
+  } catch (e) {
+    console.error(e);
+    $("status").textContent = "Kan de gegevens niet ophalen. Controleer je internet en ververs de pagina.";
+  }
+}
+
+/* ---------- Routes ---------- */
+const route = () => (location.hash === "#spel" ? "spel" : "home");
+function render() {
+  const r = route();
+  $("view-home").hidden = r !== "home";
+  $("view-spel").hidden = r !== "spel";
+  document.querySelectorAll("nav.tabbar a").forEach((a) => { if (a.dataset.route === r) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
+  const inGame = r === "spel" && S.active && !S.result;
+  $("btn-next").hidden = !inGame;
+  $("btn-restart").hidden = !inGame;
+  $("pill").hidden = !inGame;
+  if (inGame) $("pill").innerHTML = `Ronde ${S.active.round}<span class="sep">|</span>${ICON.trophy.replace("<svg", '<svg width="18" height="18"')} Tot ${S.active.target}`;
+  if (r === "home") renderHome(); else renderSpel();
+}
+
+/* ---------- Home ---------- */
 function periodStart(p) {
   const now = new Date();
   if (p === "maand") return new Date(now.getFullYear(), now.getMonth(), 1);
-  if (p === "avond") {
-    // Een toepavond loopt door na middernacht: de "avond" begint om 06:00.
-    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 6);
-    if (now < start) start.setDate(start.getDate() - 1);
-    return start;
-  }
+  if (p === "jaar") return new Date(now.getFullYear(), 0, 1);
   return null;
 }
-
-function tallySvg(n) {
-  // Streepjes in groepjes van vijf, zoals op een scoreblok. Max 20 tekenen, daarna alleen het getal.
-  const shown = Math.min(n, 20);
-  const groups = [];
-  for (let i = 0; i < shown; i += 5) groups.push(Math.min(5, shown - i));
-  return groups.map((g) => {
-    let lines = "";
-    for (let j = 0; j < Math.min(g, 4); j++) lines += `<line x1="${3 + j * 5}" y1="2" x2="${3 + j * 5}" y2="16" />`;
-    if (g === 5) lines += `<line x1="0" y1="14" x2="21" y2="4" />`;
-    return `<svg width="22" height="18" viewBox="0 0 22 18" aria-hidden="true" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none">${lines}</svg>`;
-  }).join("") + (n > 20 ? "…" : "");
-}
-
-function esc(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
-
-function render() {
-  document.querySelectorAll(".tabs button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.period === period)));
-  const start = periodStart(period);
-  const counts = new Map(players.map((p) => [p.id, 0]));
-  for (const l of losses) {
-    if (start && new Date(l.created_at) < start) continue;
-    if (counts.has(l.player_id)) counts.set(l.player_id, counts.get(l.player_id) + 1);
+function statsFor(games) {
+  const m = new Map();
+  for (const g of games) for (const x of g.game_players) {
+    const s = m.get(x.player_id) || { pid: x.player_id, played: 0, lost: 0, won: 0 };
+    s.played++; if (x.lost) s.lost++; if (x.won) s.won++;
+    m.set(x.player_id, s);
   }
-  const rows = players
-    .map((p) => ({ ...p, n: counts.get(p.id) || 0 }))
-    .sort((a, b) => b.n - a.n || a.name.localeCompare(b.name, "nl"));
+  return [...m.values()].sort((a, b) => b.lost - a.lost || (b.lost / b.played) - (a.lost / a.played) || nameOf(a.pid).localeCompare(nameOf(b.pid), "nl"));
+}
+function fmtDate(iso) {
+  return new Date(iso).toLocaleString("nl-NL", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+}
+function renderHome() {
+  const start = periodStart(S.homePeriod);
+  const games = S.history.filter((g) => !start || new Date(g.ended_at) >= start);
+  const stats = statsFor(games);
+  const top = stats[0];
+  const last = S.history[0];
+  const lastLosers = last ? last.game_players.filter((x) => x.lost).map((x) => nameOf(x.player_id)) : [];
+  const maxLost = Math.max(1, ...stats.map((s) => s.lost));
+  const periodLabel = { maand: "deze maand", jaar: "dit jaar", altijd: "aller tijden" }[S.homePeriod];
 
-  const board = $("board");
-  if (!rows.length) {
-    board.innerHTML = `<li class="empty">Nog geen spelers. Voeg hieronder de eerste toe.</li>`;
-  } else {
-    const max = rows[0].n;
-    let rank = 0, prev = null;
-    board.innerHTML = rows.map((r, i) => {
-      if (r.n !== prev) { rank = i + 1; prev = r.n; }
-      const top = max > 0 && r.n === max;
-      return `<li class="${top ? "top" : ""}">
-        <span class="rank">${rank}</span>
-        <span class="who"><span class="name">${esc(r.name)}</span>${r.is_guest ? `<span class="guest">gast</span>` : ""}
-          <span class="tally">${tallySvg(r.n)}</span></span>
-        <span class="count">${r.n}</span>
-        <button class="plus" type="button" data-player="${r.id}" aria-label="Verlies erbij voor ${esc(r.name)}">+1 verloren</button>
-      </li>`;
-    }).join("");
-  }
+  $("view-home").innerHTML = `
+    <div class="hero">
+      <img src="foto.jpg" alt="Het huis aan tafel" onerror="this.remove()">
+      <div class="cap">
+        ${top && top.lost > 0
+          ? `<div class="sub">Grootste verliezer ${periodLabel}</div><div class="big">${esc(nameOf(top.pid))}</div><div class="sub">${top.lost} keer verloren in ${top.played} potjes</div>`
+          : `<div class="big">Nog geen potjes ${periodLabel}</div><div class="sub">Start een spel via Toepen onderin.</div>`}
+      </div>
+    </div>
 
-  const byId = new Map(players.map((p) => [p.id, p]));
-  const recent = losses.slice(0, 10);
-  $("log").innerHTML = recent.length ? recent.map((l) => {
-    const d = new Date(l.created_at);
-    const when = d.toLocaleString("nl-NL", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-    return `<li><span><strong>${esc(byId.get(l.player_id)?.name || "Onbekend")}</strong> verloor <time datetime="${l.created_at}">${when}</time></span>
-      <button class="undo" type="button" data-loss="${l.id}">Ongedaan maken</button></li>`;
-  }).join("") : `<li class="empty">Nog geen verliezen.</li>`;
+    <div class="kpis">
+      <div class="kpi"><b>${games.length}</b><span>potjes</span></div>
+      <div class="kpi"><b>${last ? esc(lastLosers.join(", ") || "–") : "–"}</b><span>laatste verliezer</span></div>
+      <div class="kpi"><b>${S.active ? "Ja" : "Nee"}</b><span>spel bezig</span></div>
+    </div>
+
+    <div class="section panel">
+      <h2>Klassement</h2>
+      <div class="tabs" role="group" aria-label="Periode">
+        ${["maand", "jaar", "altijd"].map((p) => `<button type="button" data-home-period="${p}" aria-pressed="${S.homePeriod === p}">${{ maand: "Deze maand", jaar: "Dit jaar", altijd: "Altijd" }[p]}</button>`).join("")}
+      </div>
+      ${stats.length ? `<div class="tablewrap"><table>
+        <thead><tr><th>#</th><th>Speler</th><th title="Gespeeld">Gesp.</th><th title="Verloren">Verl.</th><th title="Gewonnen">Gew.</th><th title="Percentage verloren">%</th></tr></thead>
+        <tbody>${stats.map((s, i) => `<tr class="${i === 0 && s.lost > 0 ? "first" : ""}">
+          <td>${i + 1}</td>
+          <td>${esc(nameOf(s.pid))}${isGuest(s.pid) ? ' <small class="empty">gast</small>' : ""}<span class="bar" style="width:${Math.round((s.lost / maxLost) * 100)}%"></span></td>
+          <td>${s.played}</td><td>${s.lost}</td><td>${s.won}</td><td>${Math.round((s.lost / s.played) * 100)}%</td>
+        </tr>`).join("")}</tbody></table></div>`
+        : `<p class="empty">Nog geen afgeronde potjes in deze periode.</p>`}
+    </div>
+
+    <div class="section panel">
+      <h2>Laatste potjes</h2>
+      ${S.history.length ? `<ul class="games">${S.history.slice(0, 8).map((g) => {
+        const losers = g.game_players.filter((x) => x.lost).map((x) => esc(nameOf(x.player_id)));
+        const winners = g.game_players.filter((x) => x.won).map((x) => esc(nameOf(x.player_id)));
+        return `<li><span class="when">${fmtDate(g.ended_at)} · ${g.game_players.length} spelers · tot ${g.target}</span>
+          <span>Verloren: <span class="lost">${losers.join(", ") || "niemand"}</span></span>
+          <span>Gewonnen: <span class="won">${winners.join(", ") || "–"}</span></span></li>`;
+      }).join("")}</ul>` : `<p class="empty">Nog geen potjes gespeeld.</p>`}
+    </div>`;
+}
+$("view-home").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-home-period]"); if (!b) return;
+  S.homePeriod = b.dataset.homePeriod;
+  try { localStorage.setItem("homePeriod", S.homePeriod); } catch (e) {}
+  renderHome();
+});
+
+/* ---------- Spel: startscherm ---------- */
+let setupChecked = null; // Set met aangevinkte speler-ids, blijft bewaard tijdens het kiezen
+let setupTarget = 15;
+function renderSetup() {
+  if (!setupChecked) setupChecked = new Set(S.players.filter((p) => !p.is_guest).map((p) => p.id));
+  const fixed = S.players.filter((p) => !p.is_guest);
+  const guests = S.players.filter((p) => p.is_guest);
+  const choice = (p) => `<label class="choice"><input type="checkbox" data-pick="${p.id}" ${setupChecked.has(p.id) ? "checked" : ""}> ${esc(p.name)}${p.is_guest ? '<span class="tag">gast</span>' : ""}</label>`;
+  $("view-spel").innerHTML = `
+    <div class="section"><h2>Nieuw spel</h2><p class="hint">Vink aan wie er meedoet.</p></div>
+    <div class="section"><h3>Huisgenoten</h3><div class="choose">${fixed.map(choice).join("") || '<p class="empty">Geen vaste spelers gevonden.</p>'}</div></div>
+    <div class="section"><h3>Gasten</h3>
+      <div class="choose">${guests.map(choice).join("")}</div>
+      <form class="row" id="guest-form" style="margin-top:8px">
+        <input type="text" id="guest-name" maxlength="30" placeholder="Naam nieuwe gast" autocomplete="off">
+        <button class="smallbtn" type="submit">Gast toevoegen</button>
+      </form>
+      <p class="hint">Een gast blijft bewaard en staat de volgende keer gewoon in deze lijst.</p>
+    </div>
+    <div class="section panel"><h3>Spelen tot</h3>
+      <div class="row"><input type="number" id="target" min="2" max="100" value="${setupTarget}"> <span>punten. Wie dit haalt, heeft verloren.</span></div>
+    </div>
+    <div class="endbar"><button class="btn" id="btn-start" type="button">Start spel (${setupChecked.size} spelers)</button></div>`;
 }
 
-async function loadAll() {
-  const p = await db.from("players").select("id,name,is_guest").order("name");
-  if (p.error) throw p.error;
-  // Supabase geeft max 1000 rijen per keer, dus we halen de verliezen in stukken op.
-  const all = [];
-  for (let from = 0; ; from += 1000) {
-    const r = await db.from("losses").select("id,player_id,created_at").order("created_at", { ascending: false }).range(from, from + 999);
-    if (r.error) throw r.error;
-    all.push(...r.data);
-    if (r.data.length < 1000) break;
-  }
-  players = p.data; losses = all;
-  render();
-  $("status").textContent = "Bijgewerkt om " + new Date().toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
+/* ---------- Spel: scorescherm ---------- */
+function renderGame() {
+  const t = S.active.target;
+  $("view-spel").innerHTML = `
+    <div class="players">${S.gps.map((gp) => {
+      const cls = gp.score >= t ? "out" : gp.score === t - 1 ? "danger" : "";
+      const state = gp.score >= t ? `${ICON.warn} Verloren` : gp.score === t - 1 ? `${ICON.warn} Nog 1 punt` : "";
+      return `<div class="pcard ${cls}">
+        <div class="pinfo">
+          <div class="pname">${esc(nameOf(gp.player_id))}${isGuest(gp.player_id) ? '<span class="tag">gast</span>' : ""}</div>
+          <span class="pscore">${gp.score}</span>
+          <div style="display:grid;gap:6px">
+            <span class="trophy" title="Totaal gewonnen potjes">${ICON.trophy} ${winsOf(gp.player_id)}</span>
+            ${state ? `<span class="pstate">${state}</span>` : ""}
+          </div>
+        </div>
+        <div class="pbtns">
+          <button class="pbtn" type="button" data-adj="${gp.id}" data-d="1" aria-label="Punt erbij voor ${esc(nameOf(gp.player_id))}" ${gp.score >= t ? "disabled" : ""}>${ICON.plus}</button>
+          <button class="pbtn" type="button" data-adj="${gp.id}" data-d="-1" aria-label="Punt eraf voor ${esc(nameOf(gp.player_id))}" ${gp.score <= 0 ? "disabled" : ""}>${ICON.minus}</button>
+        </div>
+      </div>`;
+    }).join("")}</div>
+    <div class="endbar">
+      <button class="btn dark" id="btn-end" type="button">Einde spel</button>
+      <button class="btn ghost" id="btn-cancel" type="button">Spel annuleren (telt niet mee)</button>
+    </div>`;
 }
 
-async function refresh() {
-  try { await loadAll(); }
-  catch (e) { console.error(e); $("status").textContent = "Kan de stand niet ophalen. Controleer je internet en ververs de pagina."; }
+function renderResult() {
+  const r = S.result;
+  $("view-spel").innerHTML = `
+    <div class="section panel">
+      <h2>Uitslag</h2>
+      <p>Verloren: <span class="lost">${r.losers.map(esc).join(", ") || "niemand"}</span></p>
+      <p>Gewonnen: <span class="won">${r.winners.map(esc).join(", ") || "–"}</span></p>
+    </div>
+    <div class="endbar">
+      <button class="btn" type="button" id="btn-new">Nieuw spel</button>
+      <a class="btn dark" href="#home" style="text-align:center;text-decoration:none" id="btn-home">Naar home</a>
+    </div>`;
 }
 
+function renderSpel() {
+  if (S.result) return renderResult();
+  if (S.active) return renderGame();
+  renderSetup();
+}
+
+/* ---------- Dialoog en meldingen ---------- */
+function ask(title, text, options) {
+  // options: [{label, value, style}] -> belooft de gekozen value (of null bij annuleren)
+  return new Promise((resolve) => {
+    $("dialog").innerHTML = `<h2>${esc(title)}</h2>${text ? `<p>${esc(text)}</p>` : ""}${options.map((o, i) => `<button class="btn ${o.style || ""}" type="button" data-i="${i}">${esc(o.label)}</button>`).join("")}`;
+    $("overlay").hidden = false;
+    $("dialog").querySelector("button")?.focus();
+    $("dialog").onclick = (e) => {
+      const b = e.target.closest("button[data-i]"); if (!b) return;
+      $("overlay").hidden = true; resolve(options[+b.dataset.i].value);
+    };
+  });
+}
 let toastTimer;
 function toast(msg) {
   const t = $("toast"); t.textContent = msg; t.hidden = false;
   clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.hidden = true), 2500);
 }
 
-document.querySelector(".tabs").addEventListener("click", (e) => {
-  const b = e.target.closest("button[data-period]"); if (!b) return;
-  period = b.dataset.period;
-  try { localStorage.setItem("period", period); } catch (e) {}
+/* ---------- Acties ---------- */
+$("view-spel").addEventListener("change", (e) => {
+  const c = e.target.closest("[data-pick]");
+  if (c) { c.checked ? setupChecked.add(c.dataset.pick) : setupChecked.delete(c.dataset.pick); $("btn-start").textContent = `Start spel (${setupChecked.size} spelers)`; }
+  if (e.target.id === "target") setupTarget = parseInt(e.target.value, 10) || 15;
+});
+
+$("view-spel").addEventListener("submit", async (e) => {
+  if (e.target.id !== "guest-form") return;
+  e.preventDefault();
+  const name = $("guest-name").value.trim();
+  if (!name) return;
+  const existing = S.players.find((p) => p.name.toLowerCase() === name.toLowerCase());
+  if (existing) { setupChecked.add(existing.id); toast(`${existing.name} bestond al en is aangevinkt`); return render(); }
+  const r = await db.from("players").insert({ name, is_guest: true }).select("id").single();
+  if (r.error) return toast("Gast toevoegen lukte niet. Probeer het opnieuw.");
+  await loadPlayers();
+  setupChecked.add(r.data.id);
+  toast(`${name} toegevoegd`);
   render();
 });
 
-$("board").addEventListener("click", async (e) => {
-  const b = e.target.closest("button[data-player]"); if (!b) return;
-  b.disabled = true;
-  const { error } = await db.from("losses").insert({ player_id: b.dataset.player });
-  if (error) { toast("Opslaan lukte niet. Probeer het opnieuw."); b.disabled = false; return; }
-  const name = players.find((p) => p.id === b.dataset.player)?.name;
-  toast(`Streep erbij voor ${name}`);
-  await refresh();
-});
-
-$("log").addEventListener("click", async (e) => {
-  const b = e.target.closest("button[data-loss]"); if (!b) return;
-  if (!b.classList.contains("confirm")) {
-    b.classList.add("confirm"); b.textContent = "Zeker weten?";
-    setTimeout(() => { b.classList.remove("confirm"); b.textContent = "Ongedaan maken"; }, 3000);
+$("view-spel").addEventListener("click", async (e) => {
+  const adj = e.target.closest("[data-adj]");
+  if (adj) {
+    const gp = S.gps.find((x) => x.id === adj.dataset.adj); if (!gp) return;
+    const d = +adj.dataset.d;
+    gp.score = Math.max(0, Math.min(S.active.target, gp.score + d)); // direct tonen
+    renderGame();
+    const r = await db.rpc("adjust_score", { p_id: gp.id, p_delta: d });
+    if (r.error) { toast("Opslaan lukte niet. Probeer het opnieuw."); return refresh("game"); }
+    if (typeof r.data === "number") { gp.score = r.data; renderGame(); }
     return;
   }
-  b.disabled = true;
-  const { error } = await db.from("losses").delete().eq("id", b.dataset.loss);
-  if (error) { toast("Ongedaan maken lukte niet."); b.disabled = false; return; }
-  toast("Streep weggehaald");
-  await refresh();
+
+  if (e.target.id === "btn-start") {
+    const target = parseInt($("target").value, 10);
+    if (!(target >= 2 && target <= 100)) return toast("Kies een eindscore tussen 2 en 100.");
+    const ids = [...setupChecked].filter((id) => S.players.some((p) => p.id === id));
+    if (ids.length < 2) return toast("Kies minstens 2 spelers.");
+    e.target.disabled = true;
+    const g = await db.from("games").insert({ target }).select("id").single();
+    if (g.error) {
+      e.target.disabled = false;
+      await refresh("game");
+      return toast(S.active ? "Er is al een spel bezig." : "Starten lukte niet. Probeer het opnieuw.");
+    }
+    const ins = await db.from("game_players").insert(ids.map((player_id) => ({ game_id: g.data.id, player_id })));
+    if (ins.error) { toast("Spelers toevoegen lukte niet."); }
+    setupChecked = null;
+    await refresh("game");
+    return;
+  }
+
+  if (e.target.id === "btn-end") return endGame();
+
+  if (e.target.id === "btn-cancel") {
+    const ok = await ask("Spel annuleren?", "Dit potje wordt niet meegeteld in de statistieken.", [
+      { label: "Ja, annuleren", value: true }, { label: "Terug", value: false, style: "ghost" }]);
+    if (!ok) return;
+    await db.from("games").update({ status: "cancelled", ended_at: new Date().toISOString() }).eq("id", S.active.id);
+    toast("Spel geannuleerd");
+    return refresh("all");
+  }
+
+  if (e.target.id === "btn-new") { S.result = null; return refresh("all"); }
 });
 
-$("add-form").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const name = $("new-name").value.trim();
-  if (!name) return;
-  if (players.some((p) => p.name.toLowerCase() === name.toLowerCase())) { toast(`${name} staat er al in.`); return; }
-  const { error } = await db.from("players").insert({ name, is_guest: $("new-guest").checked });
-  if (error) { toast("Toevoegen lukte niet. Probeer het opnieuw."); return; }
-  $("new-name").value = ""; $("new-guest").checked = false;
-  toast(`${name} toegevoegd`);
-  await refresh();
+$("view-spel").addEventListener("click", (e) => { if (e.target.id === "btn-home") S.result = null; });
+
+$("btn-next").addEventListener("click", async () => {
+  if (!S.active) return;
+  S.active.round++; render();
+  const r = await db.rpc("next_round", { p_game: S.active.id });
+  if (r.error) { toast("Opslaan lukte niet."); return refresh("game"); }
+  if (typeof r.data === "number") { S.active.round = r.data; render(); }
 });
 
-refresh();
-setInterval(() => { if (!document.hidden) refresh(); }, 15000);
-document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });
+$("btn-restart").addEventListener("click", async () => {
+  if (!S.active) return;
+  const ok = await ask("Spel herstarten?", "Alle scores gaan terug naar 0 en de ronde naar 1. Dezelfde spelers blijven meedoen.", [
+    { label: "Ja, herstarten", value: true }, { label: "Terug", value: false, style: "ghost" }]);
+  if (!ok) return;
+  const a = await db.from("game_players").update({ score: 0 }).eq("game_id", S.active.id);
+  const b = await db.from("games").update({ round: 1 }).eq("id", S.active.id);
+  if (a.error || b.error) toast("Herstarten lukte niet helemaal.");
+  else toast("Spel herstart");
+  refresh("game");
+});
+
+async function endGame() {
+  await refresh("game"); // eerst de laatste stand ophalen
+  if (!S.active) return;
+  const t = S.active.target;
+  const atTarget = S.gps.filter((x) => x.score >= t);
+  let losers;
+  if (atTarget.length === 1) {
+    const ok = await ask("Einde spel?", `${nameOf(atTarget[0].player_id)} staat op ${t} en heeft verloren.`, [
+      { label: "Spel afsluiten", value: true }, { label: "Terug", value: false, style: "ghost" }]);
+    if (!ok) return;
+    losers = [atTarget[0].player_id];
+  } else {
+    const pool = atTarget.length > 1 ? atTarget : S.gps;
+    const opts = pool.map((x) => ({ label: `${nameOf(x.player_id)} (${x.score})`, value: [x.player_id] }));
+    if (atTarget.length > 1) opts.push({ label: `Allemaal: ${atTarget.map((x) => nameOf(x.player_id)).join(", ")}`, value: atTarget.map((x) => x.player_id) });
+    opts.push({ label: "Terug", value: null, style: "ghost" });
+    losers = await ask("Wie heeft er verloren?",
+      atTarget.length > 1 ? `Meerdere spelers staan op ${t}.` : `Niemand staat op ${t}. Kies wie heeft verloren.`, opts);
+    if (!losers) return;
+  }
+  const lowest = Math.min(...S.gps.filter((x) => !losers.includes(x.player_id)).map((x) => x.score));
+  const winners = S.gps.filter((x) => !losers.includes(x.player_id) && x.score === lowest).map((x) => nameOf(x.player_id));
+  const r = await db.rpc("finish_game", { p_game: S.active.id, p_losers: losers });
+  if (r.error) return toast("Afsluiten lukte niet. Probeer het opnieuw.");
+  S.result = { losers: losers.map(nameOf), winners };
+  await refresh("all");
+}
+
+/* ---------- Start ---------- */
+window.addEventListener("hashchange", () => { if (route() === "home") S.result = null; render(); });
+refresh("all");
+// Scores van andere telefoons ophalen: tijdens het spel elke 3 seconden, anders elke 20.
+setInterval(() => {
+  if (document.hidden || !$("overlay").hidden) return;
+  if (route() !== "spel" || S.result) return;
+  if (S.active) return refresh("game");
+  // Op het startscherm: alleen verversen als iemand anders een spel is gestart (anders verdwijnt wat je typt).
+  loadActive().then(() => { if (S.active) render(); }).catch(() => {});
+}, 3000);
+setInterval(() => { if (!document.hidden && route() === "home") refresh("all"); }, 20000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh("all"); });
 </script>
 </body>
 </html>
