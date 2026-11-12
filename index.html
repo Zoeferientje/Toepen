@@ -338,6 +338,7 @@ function render() {
   document.querySelectorAll("nav.tabbar a").forEach((a) => { if (a.dataset.route === r) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
   const inGame = r === "spel" && S.active && !S.result;
   document.body.classList.toggle("ingame", !!inGame);
+  syncWakeLock();
   if (r === "home") renderHome(); else renderSpel();
 }
 
@@ -740,6 +741,28 @@ async function endGame() {
   S.result = { losers: losers.map(nameOf), winners };
   await refresh("all");
 }
+
+/* ---------- Scherm aan houden tijdens een potje ---------- */
+// Werkt in Safari (recente iOS) en Chrome. Zonder ondersteuning gebeurt er gewoon niets.
+let wakeLock = null, wakeBusy = false;
+async function syncWakeLock() {
+  if (!("wakeLock" in navigator) || wakeBusy) return;
+  const want = document.body.classList.contains("ingame") && !document.hidden;
+  wakeBusy = true;
+  try {
+    if (want && !wakeLock) {
+      wakeLock = await navigator.wakeLock.request("screen");
+      wakeLock.addEventListener("release", () => { wakeLock = null; });
+    } else if (!want && wakeLock) {
+      await wakeLock.release(); wakeLock = null;
+    }
+  } catch (e) { /* geweigerd of niet ondersteund: niets aan de hand */ }
+  wakeBusy = false;
+}
+// De telefoon laat het scherm-aan los als je de app even wegklikt; bij terugkomen opnieuw aanzetten.
+document.addEventListener("visibilitychange", syncWakeLock);
+// Sommige Safari-versies willen dat het verzoek bij een tik hoort: bij elke tik in het spel nog eens proberen.
+document.addEventListener("pointerdown", () => { if (!wakeLock) syncWakeLock(); }, { passive: true });
 
 /* ---------- Start ---------- */
 window.addEventListener("hashchange", () => { if (route() === "home") S.result = null; render(); });
