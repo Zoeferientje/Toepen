@@ -176,6 +176,9 @@ tr.first td { color: var(--danger); font-weight: 700; }
 .shame .who { font: 800 1.5rem/1.1 var(--display); }
 .shame .quote { font-size: 1.15rem; font-style: italic; }
 .shame .quote::before { content: "“"; } .shame .quote::after { content: "”"; }
+@keyframes bump { 0% { transform: scale(1.18); } 100% { transform: scale(1); } }
+.pscore.bump { animation: bump .18s ease-out; display: inline-block; transform-origin: left center; }
+@media (prefers-reduced-motion: reduce) { .pscore.bump { animation: none; } }
 /* Onderbalk */
 nav.tabbar { position: fixed; left: 0; right: 0; bottom: 0; background: var(--night); padding-bottom: calc(env(safe-area-inset-bottom) + var(--navroom)); z-index: 5; }
 nav.tabbar .wrap { display: grid; grid-template-columns: 1fr 1fr; }
@@ -194,29 +197,33 @@ nav.tabbar a[aria-current="page"] { color: var(--paper); }
 .status { color: var(--muted); font-size: 13px; margin-top: 16px; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 /* Compact spelscherm: 5 spelers passen zonder scrollen op een telefoon. */
+body.ingame .topbar { padding-top: max(8px, env(safe-area-inset-top)); padding-bottom: 8px; }
+body.ingame .wordmark { font-size: 1.5rem; padding: 4px 12px; }
+body.ingame .wordmark .card { width: 18px; height: 25px; font-size: 12px; }
+.pstate { white-space: nowrap; }
 body.ingame main { padding-bottom: calc(80px + var(--navroom) + env(safe-area-inset-bottom)); }
 .players { gap: 8px; margin-top: 4px; }
 .target { margin: 8px 0 0; font-size: 13px; color: var(--muted); text-align: center; }
-.pcard { padding: 6px 10px; gap: 8px; border-radius: 10px; }
+.pcard { padding: 5px 10px; gap: 8px; border-radius: 10px; }
 .pname { font-size: 1rem; line-height: 1.2; }
 .pscore { font-size: 2rem; line-height: 1; }
 .pstate { font-size: 11px; }
 .pstate svg { width: 13px; height: 13px; }
-.pbtn { width: 46px; height: 46px; border-radius: 9px; }
-.pbtn svg { width: 26px; height: 26px; }
+.pbtn { width: 52px; height: 52px; border-radius: 10px; }
+.pbtn svg { width: 28px; height: 28px; }
 .small { gap: 4px; padding-left: 8px; }
 .slabel { font-size: 10px; max-width: none; }
 .scount { font-size: 1rem; gap: 3px; margin-right: 2px; }
 .scount svg { width: 18px; height: 18px; }
 .sbtns { align-items: center; gap: 5px; }
-.sbtn { width: 34px; height: 34px; border-radius: 7px; }
-.sbtn svg { width: 18px; height: 18px; }
+.sbtn { width: 38px; height: 38px; border-radius: 8px; }
+.sbtn svg { width: 20px; height: 20px; }
 .endbar { margin-top: 10px; gap: 4px; }
 body.ingame .endbar .btn:not(.ghost) { padding: 12px; font-size: 16px; }
 body.ingame .endbar .btn.ghost { padding: 4px; font-size: 13px; }
 nav.tabbar a { padding: 6px 0 8px; font-size: 13px; }
 nav.tabbar a svg { width: 22px; height: 22px; }
-@media (max-width: 380px) { .pbtn { width: 44px; height: 44px; } .pscore { font-size: 1.8rem; } }
+@media (max-width: 380px) { .pbtn { width: 48px; height: 48px; } .sbtn { width: 36px; height: 36px; } .pscore { font-size: 1.8rem; } }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 </head>
@@ -288,16 +295,32 @@ async function loadPlayers() {
   if (r.error) throw r.error;
   S.players = r.data;
 }
+// Per speler-in-spel: hoeveel opslagacties nog onderweg zijn, en wanneer de laatste klaar was.
+const inFlight = new Map(), doneAt = new Map();
 async function loadActive() {
+  const asked = performance.now(); // moment van opvragen
   const g = await db.from("games").select("id,target,round,started_at").eq("status", "active").maybeSingle();
   if (g.error) throw g.error;
+  if (!g.data) { S.active = null; S.gps = []; return; }
+  const r = await db.from("game_players").select("id,player_id,score,small_current").eq("game_id", g.data.id);
+  if (r.error) throw r.error;
+  const old = new Map(S.gps.map((x) => [x.id, x]));
   S.active = g.data;
-  if (S.active) {
-    const r = await db.from("game_players").select("id,player_id,score,small_current").eq("game_id", S.active.id);
-    if (r.error) throw r.error;
-    // Volgorde vast houden: vaste spelers eerst, dan op naam.
-    S.gps = r.data.sort((a, b) => isGuest(a.player_id) - isGuest(b.player_id) || nameOf(a.player_id).localeCompare(nameOf(b.player_id), "nl"));
-  } else S.gps = [];
+  S.gps = r.data.map((fresh) => {
+    const mine = old.get(fresh.id);
+    if (!mine) return fresh;
+    // Alleen overnemen als er niets van deze telefoon onderweg is én dit antwoord is opgevraagd
+    // nadat onze laatste tik was opgeslagen. Anders zou een oud antwoord je tik terugdraaien.
+    if (!(inFlight.get(fresh.id) > 0) && asked >= (doneAt.get(fresh.id) || 0)) {
+      mine.score = fresh.score; mine.small_current = fresh.small_current;
+    }
+    return mine;
+  }).sort((a, b) => isGuest(a.player_id) - isGuest(b.player_id) || nameOf(a.player_id).localeCompare(nameOf(b.player_id), "nl"));
+}
+// Wacht tot alle tikken van deze telefoon zijn opgeslagen (max 8 seconden).
+async function settled() {
+  const until = Date.now() + 8000;
+  while ([...inFlight.values()].some((n) => n > 0) && Date.now() < until) await new Promise((r) => setTimeout(r, 100));
 }
 async function loadHistory() {
   const r = await db.from("games").select("id,ended_at,target,game_players(player_id,score,lost,won,small_total)").eq("status", "finished").order("ended_at", { ascending: false }).limit(1000);
@@ -347,13 +370,23 @@ function periodStart(p) {
   return null;
 }
 function statsFor(games) {
-  // "Verwacht" = de kans als iedereen even goed is: in een potje met n spelers is dat 1/n.
+  // Eerlijke verwachting per potje: ieder krijgt zijn "eerlijke deel" van wat er in dát potje gebeurde.
+  // - Verliezen: aantal verliezers in het potje / aantal spelers (meestal 1/n; bij 2 verliezers 2/n).
+  //   De eindscore (10, 15, ...) verandert dit niet: er is altijd precies dat aantal verliezers.
+  // - Winnen: aantal winnaars / aantal spelers (gedeelde winst telt mee).
+  // - Kleine spelers: totaal kleine spelers in het potje / aantal spelers. Zo vergelijk je alleen met
+  //   wie er in hetzelfde potje zat, en telt een kort potje (tot 10) vanzelf minder zwaar dan een lang potje.
   const m = new Map();
   for (const g of games) {
-    const n = g.game_players.length || 1;
-    for (const x of g.game_players) {
-      const s = m.get(x.player_id) || { pid: x.player_id, played: 0, lost: 0, won: 0, expL: 0, expW: 0, small: 0 };
-      s.played++; s.expL += 1 / n; s.expW += 1 / n; s.small += x.small_total || 0;
+    const gp = g.game_players, n = gp.length || 1;
+    const losers = gp.filter((x) => x.lost).length, winners = gp.filter((x) => x.won).length;
+    const smallSum = gp.reduce((a, x) => a + (x.small_total || 0), 0);
+    const w15 = 15 / (g.target || 15); // omrekenen naar een potje tot 15
+    for (const x of gp) {
+      const s = m.get(x.player_id) || { pid: x.player_id, played: 0, lost: 0, won: 0, expL: 0, expW: 0, small: 0, expS: 0, small15: 0 };
+      s.played++;
+      s.expL += losers / n; s.expW += winners / n; s.expS += smallSum / n;
+      s.small += x.small_total || 0; s.small15 += (x.small_total || 0) * w15;
       if (x.lost) s.lost++; if (x.won) s.won++;
       m.set(x.player_id, s);
     }
@@ -368,7 +401,11 @@ function statsFor(games) {
     }
   }
   const list = [...m.values()];
-  for (const s of list) { s.fL = s.expL ? s.lost / s.expL : 0; s.fW = s.expW ? s.won / s.expW : 0; }
+  for (const s of list) {
+    s.fL = s.expL ? s.lost / s.expL : 0;
+    s.fW = s.expW ? s.won / s.expW : 0;
+    s.fS = s.expS ? s.small / s.expS : 0;
+  }
   return list.sort((a, b) => b.fL - a.fL || b.lost - a.lost || nameOf(a.pid).localeCompare(nameOf(b.pid), "nl"));
 }
 const nl1 = (x) => x.toFixed(1).replace(".", ",");
@@ -389,12 +426,10 @@ function renderHome() {
   const pool = stats.filter((s) => s.played >= minGames);
   const pick = (score) => [...pool].sort((a, b) => score(b) - score(a) || b.played - a.played)[0];
   const worst = pick((s) => s.fL);
-  const winner = pick((s) => s.fW);
-  const smallest = pick((s) => s.small / s.played);
-  // Kleine-spelersfactor: jouw gemiddelde per potje gedeeld door het gemiddelde van iedereen.
-  const totSmall = stats.reduce((n, x) => n + x.small, 0), totPlayed = stats.reduce((n, x) => n + x.played, 0);
-  const avgSmall = totPlayed ? totSmall / totPlayed : 0;
-  for (const x of stats) x.fS = avgSmall ? (x.small / x.played) / avgSmall : 0;
+  // Minste verliezer: laagste verliesfactor (bij gelijkspel wie de meeste potjes speelde), niet dezelfde als de pechvogel.
+  const luckiest = [...pool].filter((s) => s !== worst || pool.length === 1)
+    .sort((a, b) => a.fL - b.fL || b.played - a.played)[0];
+  const smallest = pick((s) => s.fS);
   const recL = [...stats].sort((a, b) => b.maxL - a.maxL || b.curL - a.curL)[0];
   const recN = [...stats].sort((a, b) => b.maxN - a.maxN || b.curN - a.curN)[0];
   const last = games[0];
@@ -411,8 +446,8 @@ function renderHome() {
       <img src="foto.jpg" alt="Het huis aan tafel" onerror="this.remove()">
       ${games.length ? `<div class="trio">
         ${card("", "Pechvogel", worst, (s) => ({ ok: s.lost > 0, text: `${nl1(s.fL)}× zo vaak verloren als verwacht` }))}
-        ${card("luck", "Grootste winnaar", winner, (s) => ({ ok: s.won > 0, text: `${nl1(s.fW)}× zo vaak gewonnen als verwacht` }))}
-        ${card("smallest", "Kleinste speler", smallest, (s) => ({ ok: s.small > 0, text: `${nl1(s.fS)}× zo vaak niet mee als gemiddeld` }))}
+        ${card("luck", "Minste verliezer", luckiest !== worst ? luckiest : null, (s) => ({ ok: true, text: s.lost === 0 ? `nog nooit verloren in ${s.played} ${s.played === 1 ? "potje" : "potjes"}` : `${nl1(s.fL)}× zo vaak verloren als verwacht` }))}
+        ${card("smallest", "Kleinste speler", smallest, (s) => ({ ok: s.small > 0, text: `${nl1(s.fS)}× zo vaak niet mee als verwacht` }))}
       </div>` : `<div class="cap"><div class="big">Nog geen potjes</div><div class="sub">Start een spel via Toepen onderin.</div></div>`}
     </div>
 
@@ -426,7 +461,7 @@ function renderHome() {
     <div class="section panel">
       <h2>Per speler</h2>
       ${stats.length ? `<div class="tablewrap"><table class="ptable">
-        <thead><tr><th>Speler</th><th>Potjes</th><th>Verloren</th><th>Factor</th><th>Gewonnen</th><th>Factor</th><th>Kleine sp.</th><th>Per potje</th><th>Factor</th><th>Verliesreeks</th><th>Zonder verlies</th></tr></thead>
+        <thead><tr><th>Speler</th><th>Potjes</th><th>Verloren</th><th>Factor</th><th>Gewonnen</th><th>Factor</th><th>Kleine sp.</th><th title="Gemiddeld per potje, omgerekend naar een potje tot 15">Per potje*</th><th>Factor</th><th>Verliesreeks</th><th>Zonder verlies</th></tr></thead>
         <tbody>${stats.map((s) => `<tr>
           <td>${esc(nameOf(s.pid))}${isGuest(s.pid) ? ' <span class="gtag">gast</span>' : ""}</td>
           <td>${s.played}</td>
@@ -435,12 +470,12 @@ function renderHome() {
           <td>${s.won} <small>(${pct(s.won, s.played)})</small></td>
           <td class="${s.fW > 1 ? "good" : ""}">${nl1(s.fW)}</td>
           <td>${s.small}</td>
-          <td>${nl1(s.small / s.played)}</td>
+          <td>${nl1(s.small15 / s.played)}</td>
           <td class="${s.fS > 1 ? "warmth" : ""}">${nl1(s.fS)}</td>
           <td>${s.curL} <small>(rec. ${s.maxL})</small></td>
           <td>${s.curN} <small>(rec. ${s.maxN})</small></td>
         </tr>`).join("")}</tbody></table></div>
-        <p class="hint">Factor 1,0 is precies gemiddeld. Met 3 spelers verlies je verwacht 1 op de 3 potjes, met 5 spelers 1 op de 5. Factor 2,0 is twee keer zo vaak als verwacht. Bij kleine spelers vergelijkt de factor jouw gemiddelde per potje met dat van iedereen samen. Reeksen: het eerste getal is de reeks van nu, "rec." het record.</p>`
+        <p class="hint">Factor 1,0 is precies gemiddeld. Met 3 spelers verlies je verwacht 1 op de 3 potjes, met 5 spelers 1 op de 5. Factor 2,0 is twee keer zo vaak als verwacht. Bij kleine spelers word je per potje vergeleken met de anderen in hetzelfde potje, dus een kort potje (tot 10) telt vanzelf minder zwaar. *Per potje is omgerekend naar een potje tot 15. Reeksen: het eerste getal is de reeks van nu, "rec." het record.</p>`
         : `<p class="empty">Nog geen afgeronde potjes in deze periode.</p>`}
     </div>
 
@@ -490,29 +525,32 @@ function renderSetup() {
 /* ---------- Spel: scorescherm ---------- */
 function renderGame() {
   const t = S.active.target;
-  $("view-spel").innerHTML = `
+  const view = $("view-spel");
+  // Zelfde spel en dezelfde spelers? Dan alleen de getallen bijwerken. Zo blijven de knoppen staan
+  // en gaat een tik nooit verloren doordat het scherm net opnieuw wordt opgebouwd.
+  const key = S.active.id + "|" + t + "|" + S.gps.map((g) => g.id).join(",");
+  if (view.dataset.key === key && view.querySelector(".players")) { S.gps.forEach(updateCard); return; }
+  view.dataset.key = key;
+  view.innerHTML = `
     <p class="target">Spelen tot <b>${t}</b></p>
     <div class="players">${S.gps.map((gp) => {
-      const cls = gp.score >= t ? "out" : gp.score === t - 1 ? "danger" : "";
-      const state = gp.score >= t ? `${ICON.warn} Verloren` : gp.score === t - 1 ? `${ICON.warn} Nog 1 punt` : "";
       const nm = esc(nameOf(gp.player_id));
-      const must = gp.small_current >= 2;
-      return `<div class="pcard ${cls}">
+      return `<div class="pcard" data-card="${gp.id}">
         <div class="pinfo">
           <div class="pname">${nm}${isGuest(gp.player_id) ? '<span class="tag">gast</span>' : ""}</div>
-          <span class="pscore">${gp.score}</span>
-          ${state ? `<span class="pstate">${state}</span>` : ""}
+          <span class="pscore"></span>
+          <span class="pstate" hidden></span>
         </div>
         <div class="pbtns">
-          <button class="pbtn" type="button" data-adj="${gp.id}" data-d="1" aria-label="Punt erbij voor ${nm}" ${gp.score >= t ? "disabled" : ""}>${ICON.plus}</button>
-          <button class="pbtn" type="button" data-adj="${gp.id}" data-d="-1" aria-label="Punt eraf voor ${nm}" ${gp.score <= 0 ? "disabled" : ""}>${ICON.minus}</button>
+          <button class="pbtn" type="button" data-adj="${gp.id}" data-d="1" aria-label="Punt erbij voor ${nm}">${ICON.plus}</button>
+          <button class="pbtn" type="button" data-adj="${gp.id}" data-d="-1" aria-label="Punt eraf voor ${nm}">${ICON.minus}</button>
         </div>
-        <div class="small ${must ? "must" : ""}">
-          <span class="slabel">${must ? "Moet mee!" : "Kleine spelers"}</span>
+        <div class="small">
+          <span class="slabel"></span>
           <div class="sbtns">
-            <span class="scount">${ICON.siren}<b>${gp.small_current}</b></span>
-            <button class="sbtn" type="button" data-small="${gp.id}" aria-label="Kleine speler erbij voor ${nm}" ${gp.score >= t ? "disabled" : ""}>${ICON.plus}</button>
-            <button class="sbtn" type="button" data-small-reset="${gp.id}" aria-label="Kleine spelers terug naar 0 voor ${nm}" ${gp.small_current === 0 ? "disabled" : ""}>${ICON.reset}</button>
+            <span class="scount">${ICON.siren}<b></b></span>
+            <button class="sbtn" type="button" data-small="${gp.id}" aria-label="Kleine speler erbij voor ${nm}">${ICON.plus}</button>
+            <button class="sbtn" type="button" data-small-reset="${gp.id}" aria-label="Kleine spelers terug naar 0 voor ${nm}">${ICON.reset}</button>
           </div>
         </div>
       </div>`;
@@ -521,6 +559,32 @@ function renderGame() {
       <button class="btn dark" id="btn-end" type="button">Einde spel</button>
       <button class="btn ghost" id="btn-cancel" type="button">Spel annuleren (telt niet mee)</button>
     </div>`;
+  S.gps.forEach(updateCard);
+}
+
+function updateCard(gp) {
+  const card = document.querySelector(`[data-card="${gp.id}"]`);
+  if (!card || !S.active) return;
+  const t = S.active.target;
+  const out = gp.score >= t, danger = gp.score === t - 1, must = gp.small_current >= 2;
+  card.classList.toggle("out", out);
+  card.classList.toggle("danger", danger);
+  const sc = card.querySelector(".pscore");
+  if (sc.textContent !== String(gp.score)) {
+    sc.textContent = gp.score;
+    sc.classList.remove("bump"); void sc.offsetWidth; sc.classList.add("bump"); // kort oplichten als bevestiging
+  }
+  const st = card.querySelector(".pstate");
+  st.hidden = !(out || danger);
+  st.innerHTML = out ? `${ICON.warn} Verloren` : danger ? `${ICON.warn} Nog 1 punt` : "";
+  card.querySelector('[data-d="1"]').disabled = out;
+  card.querySelector('[data-d="-1"]').disabled = gp.score <= 0;
+  const small = card.querySelector(".small");
+  small.classList.toggle("must", must);
+  small.querySelector(".slabel").textContent = must ? "Moet mee!" : "Kleine spelers";
+  small.querySelector(".scount b").textContent = gp.small_current;
+  small.querySelector("[data-small]").disabled = out;
+  small.querySelector("[data-small-reset]").disabled = gp.small_current === 0;
 }
 
 // Foto en boodschap per vaste speler, getoond als die verliest.
@@ -576,6 +640,24 @@ function toast(msg) {
   clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.hidden = true), 2500);
 }
 
+/* ---------- Tikken op het spelscherm ---------- */
+async function change(id, apply, save, field) {
+  const gp = S.gps.find((x) => x.id === id);
+  if (!gp || !S.active) return;
+  apply(gp);                       // 1. meteen tonen
+  updateCard(gp);
+  try { navigator.vibrate?.(12); } catch (e) {}
+  inFlight.set(id, (inFlight.get(id) || 0) + 1);
+  let r;
+  try { r = await save(id); } catch (err) { r = { error: err }; } // 2. opslaan in de database
+  const left = inFlight.get(id) - 1;
+  inFlight.set(id, left);
+  if (left === 0) doneAt.set(id, performance.now());
+  if (r.error) { toast("Opslaan lukte niet. Probeer het opnieuw."); if (left === 0) refresh("game"); return; }
+  // 3. Pas als alle tikken binnen zijn de waarde van de database overnemen (die telt ook tikken van andere telefoons mee).
+  if (left === 0 && typeof r.data === "number") { gp[field] = r.data; updateCard(gp); }
+}
+
 /* ---------- Acties ---------- */
 $("view-spel").addEventListener("change", (e) => {
   const c = e.target.closest("[data-pick]");
@@ -601,32 +683,19 @@ $("view-spel").addEventListener("submit", async (e) => {
 $("view-spel").addEventListener("click", async (e) => {
   const adj = e.target.closest("[data-adj]");
   if (adj) {
-    const gp = S.gps.find((x) => x.id === adj.dataset.adj); if (!gp) return;
     const d = +adj.dataset.d;
-    gp.score = Math.max(0, Math.min(S.active.target, gp.score + d)); // direct tonen
-    renderGame();
-    const r = await db.rpc("adjust_score", { p_id: gp.id, p_delta: d });
-    if (r.error) { toast("Opslaan lukte niet. Probeer het opnieuw."); return refresh("game"); }
-    if (typeof r.data === "number") { gp.score = r.data; renderGame(); }
-    return;
+    return change(adj.dataset.adj, (gp) => { gp.score = Math.max(0, Math.min(S.active.target, gp.score + d)); },
+      (id) => db.rpc("adjust_score", { p_id: id, p_delta: d }), "score");
   }
-
   const sm = e.target.closest("[data-small]");
   if (sm) {
-    const gp = S.gps.find((x) => x.id === sm.dataset.small); if (!gp) return;
-    gp.small_current++; renderGame();
-    const r = await db.rpc("add_small", { p_id: gp.id });
-    if (r.error) { toast("Opslaan lukte niet. Probeer het opnieuw."); return refresh("game"); }
-    if (typeof r.data === "number") { gp.small_current = r.data; renderGame(); }
-    return;
+    return change(sm.dataset.small, (gp) => { gp.small_current++; },
+      (id) => db.rpc("add_small", { p_id: id }), "small_current");
   }
   const smr = e.target.closest("[data-small-reset]");
   if (smr) {
-    const gp = S.gps.find((x) => x.id === smr.dataset.smallReset); if (!gp) return;
-    gp.small_current = 0; renderGame();
-    const r = await db.rpc("reset_small", { p_id: gp.id });
-    if (r.error) { toast("Opslaan lukte niet. Probeer het opnieuw."); return refresh("game"); }
-    return;
+    return change(smr.dataset.smallReset, (gp) => { gp.small_current = 0; },
+      (id) => db.rpc("reset_small", { p_id: id }), "small_current");
   }
 
   if (e.target.id === "btn-start") {
@@ -665,7 +734,8 @@ $("view-spel").addEventListener("click", async (e) => {
 $("view-spel").addEventListener("click", (e) => { if (e.target.id === "btn-home") S.result = null; });
 
 async function endGame() {
-  await refresh("game"); // eerst de laatste stand ophalen
+  await settled();        // eerst alle tikken van deze telefoon laten opslaan
+  await refresh("game"); // dan de laatste stand ophalen
   if (!S.active) return;
   const t = S.active.target;
   const atTarget = S.gps.filter((x) => x.score >= t);
@@ -699,7 +769,7 @@ refresh("all");
 setInterval(() => {
   if (document.hidden || !$("overlay").hidden) return;
   if (route() !== "spel" || S.result) return;
-  if (S.active) return refresh("game");
+  if (S.active) { if ([...inFlight.values()].some((n) => n > 0)) return; return refresh("game"); }
   // Op het startscherm: alleen verversen als iemand anders een spel is gestart (anders verdwijnt wat je typt).
   loadActive().then(() => { if (S.active) render(); }).catch(() => {});
 }, 3000);
