@@ -1,0 +1,17 @@
+{
+  "name": "WB Toep",
+  "short_name": "WB Toep",
+  "description": "Toepen bijhouden in huis: scores, verliezers en statistieken.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f2f1ed",
+  "theme_color": "#ffffff",
+  "lang": "nl",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
